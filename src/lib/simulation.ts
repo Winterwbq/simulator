@@ -24,6 +24,7 @@ import type {
   StakeholderDeltas,
   StakeholderExplanations,
   Story,
+  StoryDeadline,
   TrustScores,
 } from "./types";
 
@@ -60,11 +61,12 @@ export function getDeadlineProgressValue(currentMinutes: number): number {
   return Math.min(getDeadlineProgressMax(), Math.max(0, getTimeRemaining(currentMinutes)));
 }
 
-export function getDeadlineSummary() {
+export function getDeadlineSummary(story?: Story): Required<StoryDeadline> {
+  const deadline = story?.meta.deadline;
   return {
-    dueLabel: DEADLINE_LABEL,
-    deliverable: DEADLINE_DELIVERABLE,
-    consequence: DEADLINE_CONSEQUENCE,
+    dueLabel: deadline?.dueLabel ?? DEADLINE_LABEL,
+    deliverable: deadline?.deliverable ?? DEADLINE_DELIVERABLE,
+    consequence: deadline?.consequence ?? DEADLINE_CONSEQUENCE,
   };
 }
 
@@ -78,6 +80,7 @@ export function initializeSimulation(story: Story): SimulationState {
 
   return {
     simInitialized: true,
+    scenarioId: meta.id,
     storyTitle: meta.title,
     availableIds: startMessages,
     openedIds: [],
@@ -91,7 +94,7 @@ export function initializeSimulation(story: Story): SimulationState {
     quickFilter: "All",
     stakeholderFilter: "All",
     currentMinutes: DEFAULT_TIME_MINUTES,
-    deadlineLabel: DEADLINE_LABEL,
+    deadlineLabel: meta.deadline?.dueLabel ?? DEADLINE_LABEL,
     lastTimeAdvanceNotice: "",
     ending: null,
     simulationComplete: false,
@@ -225,7 +228,8 @@ export function loadSimulationState(story: Story): SimulationState {
       draftSubmissionPending?: boolean;
     };
     if (
-      parsed.storyTitle !== story.meta.title ||
+      ((typeof parsed.scenarioId === "string" && parsed.scenarioId !== story.meta.id) ||
+        (typeof parsed.scenarioId !== "string" && parsed.storyTitle !== story.meta.title)) ||
       !isStringArray(parsed.availableIds) ||
       !isStringArray(parsed.openedIds) ||
       !isStringArray(parsed.handledIds) ||
@@ -237,6 +241,8 @@ export function loadSimulationState(story: Story): SimulationState {
     return {
       ...fallback,
       ...parsed,
+      scenarioId: story.meta.id,
+      storyTitle: story.meta.title,
       trust: parsed.trust,
       availableIds: parsed.availableIds,
       openedIds: parsed.openedIds,
@@ -270,6 +276,24 @@ export function persistSimulationState(state: SimulationState): void {
     return;
   }
   window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+export function loadPersistedScenarioId(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const raw = window.sessionStorage.getItem(STORAGE_KEY);
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<SimulationState>;
+    return typeof parsed.scenarioId === "string" ? parsed.scenarioId : null;
+  } catch {
+    return null;
+  }
 }
 
 export function resetPersistedSimulationState(): void {

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { story as storyData } from "./data/story";
+import { getRandomScenario, getScenarioById } from "./data/scenarios";
 import { AnalysisPanels } from "./components/AnalysisPanels";
 import { BriefingPanel } from "./components/BriefingPanel";
 import { InboxPanel } from "./components/InboxPanel";
@@ -10,9 +10,9 @@ import { TimeBanner } from "./components/TimeBanner";
 import { TrustDashboard } from "./components/TrustDashboard";
 import { TrustOverviewStrip } from "./components/TrustOverviewStrip";
 import { fetchDraftGradingHealth, gradeReplyWithApi } from "./lib/api";
-import { getFilteredMessageIds, loadSimulationState, markMessageOpened, persistSimulationState, resetPersistedSimulationState, downloadPlaythrough, initializeSimulation, applyChoice, applyDraftedReply, buildPresetReplyText, inferReplyTypeForMessage, updateDraftReply } from "./lib/simulation";
+import { getFilteredMessageIds, loadPersistedScenarioId, loadSimulationState, markMessageOpened, persistSimulationState, resetPersistedSimulationState, downloadPlaythrough, initializeSimulation, applyChoice, applyDraftedReply, buildPresetReplyText, inferReplyTypeForMessage, updateDraftReply } from "./lib/simulation";
 import { validateStory } from "./lib/storyValidation";
-import type { DraftGradingHealth, SimulationState } from "./lib/types";
+import type { DraftGradingHealth, SimulationState, Story } from "./lib/types";
 
 const DEFAULT_DRAFT_GRADING_HEALTH: DraftGradingHealth = {
   gradingBackend: "llama.cpp",
@@ -26,15 +26,19 @@ const DEFAULT_DRAFT_GRADING_HEALTH: DraftGradingHealth = {
 };
 
 export default function App() {
-  const validationErrors = useMemo(() => validateStory(storyData), []);
-  const [state, setState] = useState<SimulationState>(() => loadSimulationState(storyData));
+  const initialStory = useMemo<Story>(() => {
+    return getScenarioById(loadPersistedScenarioId()) ?? getRandomScenario();
+  }, []);
+  const [activeStory, setActiveStory] = useState<Story>(initialStory);
+  const validationErrors = useMemo(() => validateStory(activeStory), [activeStory]);
+  const [state, setState] = useState<SimulationState>(() => loadSimulationState(initialStory));
   const [draftGradingHealth, setDraftGradingHealth] = useState<DraftGradingHealth>(
     DEFAULT_DRAFT_GRADING_HEALTH,
   );
   const trustSnapshotRef = useRef<HTMLDivElement | null>(null);
   const [showStickyMissionBar, setShowStickyMissionBar] = useState(false);
 
-  const filteredIds = useMemo(() => getFilteredMessageIds(storyData, state), [state]);
+  const filteredIds = useMemo(() => getFilteredMessageIds(activeStory, state), [activeStory, state]);
   const inOutcomeMode = Boolean(state.ending) || state.simulationComplete;
 
   useEffect(() => {
@@ -64,12 +68,12 @@ export default function App() {
   }, [filteredIds, state.selectedMessageId]);
 
   useEffect(() => {
-    const stakeholders = ["All", ...Array.from(new Set(state.availableIds.map((messageId) => storyData.messages[messageId].stakeholder)))];
+    const stakeholders = ["All", ...Array.from(new Set(state.availableIds.map((messageId) => activeStory.messages[messageId].stakeholder)))];
     if (stakeholders.includes(state.stakeholderFilter)) {
       return;
     }
     setState((current) => ({ ...current, stakeholderFilter: "All" }));
-  }, [state.availableIds, state.stakeholderFilter]);
+  }, [activeStory, state.availableIds, state.stakeholderFilter]);
 
   useEffect(() => {
     let cancelled = false;
@@ -160,12 +164,14 @@ export default function App() {
   }
 
   const handleRestart = () => {
+    const nextStory = getRandomScenario(activeStory.meta.id);
     resetPersistedSimulationState();
-    setState(initializeSimulation(storyData));
+    setActiveStory(nextStory);
+    setState(initializeSimulation(nextStory));
   };
 
   const handleChoose = async (messageId: string, choiceIndex: number) => {
-    const message = storyData.messages[messageId];
+    const message = activeStory.messages[messageId];
     const choice = message?.choices[choiceIndex];
     if (!message || !choice) {
       return;
@@ -195,7 +201,7 @@ export default function App() {
         responseLabel: choice.label,
       });
 
-      setState((current) => applyChoice(storyData, current, messageId, choiceIndex, graded));
+      setState((current) => applyChoice(activeStory, current, messageId, choiceIndex, graded));
     } catch (error) {
       const messageText =
         error instanceof Error ? error.message : "Reply grading request failed.";
@@ -209,7 +215,7 @@ export default function App() {
 
   const handleSendDraftedReply = async (messageId: string) => {
     const draft = state.draftReplies[messageId];
-    const message = storyData.messages[messageId];
+    const message = activeStory.messages[messageId];
     if (!draft || !message || draft.text.trim().length === 0) {
       return;
     }
@@ -238,7 +244,7 @@ export default function App() {
         responseLabel: `Drafted reply (${draft.replyType})`,
       });
 
-      setState((current) => applyDraftedReply(storyData, current, messageId, graded));
+      setState((current) => applyDraftedReply(activeStory, current, messageId, graded));
     } catch (error) {
       const messageText =
         error instanceof Error ? error.message : "The local reply grading request failed.";
@@ -254,7 +260,7 @@ export default function App() {
     ? `Ending: ${state.ending.name}`
     : inOutcomeMode
       ? "Simulation Complete"
-      : storyData.meta.title;
+      : activeStory.meta.title;
 
   return (
     <main className={showStickyMissionBar ? "app-shell app-shell-mission-bar-active" : "app-shell"}>
@@ -293,7 +299,7 @@ export default function App() {
           <pre className="system-log">{state.logEntries.map((entry, index) => `${index + 1}. ${entry}`).join("\n")}</pre>
 
           <div className="action-row">
-            <button className="primary-button" type="button" onClick={() => downloadPlaythrough(storyData, state)}>
+            <button className="primary-button" type="button" onClick={() => downloadPlaythrough(activeStory, state)}>
               Export playthrough log
             </button>
             <button className="secondary-button" type="button" onClick={handleRestart}>
@@ -304,12 +310,12 @@ export default function App() {
       ) : (
         <>
           <BriefingPanel
-            story={storyData}
+            story={activeStory}
             showStartPrompt={state.showStartPrompt}
             onStartSimulation={() => setState((current) => ({ ...current, showStartPrompt: false }))}
             onDismissStartPrompt={() => setState((current) => ({ ...current, showStartPrompt: false }))}
           />
-          <TimeBanner currentMinutes={state.currentMinutes} />
+          <TimeBanner story={activeStory} currentMinutes={state.currentMinutes} />
           {!state.showStartPrompt ? (
             <>
               {state.lastTimeAdvanceNotice ? <div className="callout info">{state.lastTimeAdvanceNotice}</div> : null}
@@ -324,7 +330,7 @@ export default function App() {
               <div className="workspace-layout">
                 <aside className="workspace-rail">
                   <InboxPanel
-                    story={storyData}
+                    story={activeStory}
                     state={state}
                     filteredIds={filteredIds}
                     onSearchChange={(value) => setState((current) => ({ ...current, searchQuery: value }))}
@@ -341,7 +347,7 @@ export default function App() {
 
                 <section className="workspace-main">
                   <OpenEmailPanel
-                    story={storyData}
+                    story={activeStory}
                     state={state}
                     messageId={state.selectedMessageId}
                     onChoose={handleChoose}
@@ -379,7 +385,7 @@ export default function App() {
 
                     <div className="section-divider" />
                     <div className="stack-actions">
-                      <button className="primary-button wide-button" type="button" onClick={() => downloadPlaythrough(storyData, state)}>
+                      <button className="primary-button wide-button" type="button" onClick={() => downloadPlaythrough(activeStory, state)}>
                         Export playthrough log
                       </button>
                       <button className="secondary-button wide-button" type="button" onClick={handleRestart}>

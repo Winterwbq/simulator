@@ -6,16 +6,18 @@ import {
   getDeadlineSummary,
   getTimeRemaining,
 } from "../lib/simulation";
+import type { Story } from "../lib/types";
 
 interface TimeBannerProps {
+  story: Story;
   currentMinutes: number;
 }
 
-export function TimeBanner({ currentMinutes }: TimeBannerProps) {
+export function TimeBanner({ story, currentMinutes }: TimeBannerProps) {
   const timeRemaining = getTimeRemaining(currentMinutes);
   const progressValue = getDeadlineProgressValue(currentMinutes);
   const progressMax = getDeadlineProgressMax();
-  const deadline = getDeadlineSummary();
+  const deadline = getDeadlineSummary(story);
 
   return (
     <section className="time-panel">

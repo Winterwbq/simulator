@@ -37,7 +37,7 @@ export function validateStory(story: unknown): string[] {
   }
 
   const metaObject = meta as Record<string, unknown>;
-  const requiredMetaFields = ["title", "role", "setting", "start_messages", "initial_trust"];
+  const requiredMetaFields = ["id", "title", "role", "setting", "start_messages", "initial_trust"];
   for (const field of requiredMetaFields) {
     if (!(field in metaObject)) {
       errors.push(`\`meta.${field}\` is required.`);
@@ -46,8 +46,13 @@ export function validateStory(story: unknown): string[] {
 
   const startMessages = metaObject.start_messages;
   const initialTrust = metaObject.initial_trust;
+  const deadline = metaObject.deadline;
   const messagesObject = messages as Record<string, unknown>;
   const messageIds = new Set(Object.keys(messagesObject));
+
+  if (typeof metaObject.id !== "string" || metaObject.id.trim().length === 0) {
+    errors.push("`meta.id` must be a non-empty string.");
+  }
 
   if (!Array.isArray(startMessages) || startMessages.length === 0) {
     errors.push("`meta.start_messages` must be a non-empty list.");
@@ -80,6 +85,19 @@ export function validateStory(story: unknown): string[] {
         !isValidTrustValue(value)
       ) {
         errors.push(`\`meta.initial_trust.${stakeholder}\` must be a number between 0 and 100.`);
+      }
+    }
+  }
+
+  if (deadline !== undefined) {
+    if (!isPlainObject(deadline)) {
+      errors.push("`meta.deadline` must be an object when provided.");
+    } else {
+      for (const field of ["dueLabel", "deliverable", "consequence"] as const) {
+        const value = deadline[field];
+        if (value !== undefined && typeof value !== "string") {
+          errors.push(`\`meta.deadline.${field}\` must be a string when provided.`);
+        }
       }
     }
   }

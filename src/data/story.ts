@@ -2,6 +2,7 @@ import type { Story } from "../lib/types";
 
 export const story: Story = {
   meta: {
+    id: "helios-chief-of-staff",
     title: "Helios Pilot Inbox Simulator",
     role: "Chief of Staff at Helios Commons",
     setting:

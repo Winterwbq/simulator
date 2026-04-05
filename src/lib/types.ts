@@ -45,12 +45,20 @@ export interface Ending {
   text: string;
 }
 
+export interface StoryDeadline {
+  dueLabel?: string;
+  deliverable?: string;
+  consequence?: string;
+}
+
 export interface StoryMeta {
+  id: string;
   title: string;
   role: string;
   setting: string;
   start_messages: string[];
   initial_trust: TrustScores;
+  deadline?: StoryDeadline;
   briefing?: {
     situation: string;
     todayJob: string;
@@ -115,6 +123,7 @@ export interface DraftGradingHealth {
 
 export interface SimulationState {
   simInitialized: boolean;
+  scenarioId: string;
   storyTitle: string;
   availableIds: string[];
   openedIds: string[];
