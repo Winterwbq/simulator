@@ -13,14 +13,12 @@ export function TrustDashboard({ state }: TrustDashboardProps) {
 
   return (
     <details className="trust-expander">
-      <summary>Stakeholder trust</summary>
+      <summary>Stakeholder trust monitor</summary>
       <div className="trust-expander-body">
         {KNOWN_STAKEHOLDERS.map((stakeholder) => {
           const value = state.trust[stakeholder];
           const [bandLabel, bandClass, helpText] = getTrustBand(value);
-          const deltaText = `${stakeholder[0].toUpperCase()}${stakeholder.slice(1)}: ${value} (${formatDeltaText(
-            totalDeltas[stakeholder],
-          )} total, ${formatDeltaText(lastDeltas[stakeholder])} last step)`;
+          const deltaText = `${stakeholder[0].toUpperCase()}${stakeholder.slice(1)} · ${value}`;
 
           return (
             <div className="trust-row" key={stakeholder}>
@@ -30,7 +28,11 @@ export function TrustDashboard({ state }: TrustDashboardProps) {
                   {bandLabel}
                 </span>
               </div>
-              <div className="trust-help">{helpText}</div>
+              <div className="trust-help">
+                {`${helpText} ${formatDeltaText(totalDeltas[stakeholder])} overall, ${formatDeltaText(
+                  lastDeltas[stakeholder],
+                )} on the last step.`}
+              </div>
               <progress max={100} value={value} />
             </div>
           );

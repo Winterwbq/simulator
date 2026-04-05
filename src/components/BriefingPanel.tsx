@@ -41,7 +41,10 @@ export function BriefingPanel({
 
   return (
     <section className="briefing-card">
-      <div className="briefing-header">Briefing (30 seconds)</div>
+      <div className="briefing-header">Briefing</div>
+      <p className="briefing-kicker">
+        A short orientation for the decision round ahead.
+      </p>
       <div className="briefing-line">
         <strong>Role:</strong> {story.meta.role}
       </div>
@@ -69,14 +72,14 @@ export function BriefingPanel({
       {showStartPrompt ? (
         <div className="callout neutral start-callout">
           <div>
-            <strong>Start here.</strong> Read the briefing, then begin with the unlocked emails in the inbox.
+            <strong>Start here.</strong> Read the situation once, then work through the inbox in the order that feels most urgent.
           </div>
           <div className="action-row">
             <button className="primary-button" type="button" onClick={onStartSimulation}>
-              Start simulation
+              Begin briefing round
             </button>
             <button className="secondary-button" type="button" onClick={onDismissStartPrompt}>
-              Dismiss
+              Skip intro
             </button>
           </div>
         </div>

@@ -226,7 +226,13 @@ export default function App() {
   return (
     <main className="app-shell">
       <div className="page-header">
+        <div className="page-eyebrow">Policy communication simulator</div>
         <h1>{pageTitle}</h1>
+        {!inOutcomeMode ? (
+          <p>
+            Weigh disclosure, credibility, and public trust under deadline pressure.
+          </p>
+        ) : null}
       </div>
 
       {inOutcomeMode ? (
@@ -271,7 +277,7 @@ export default function App() {
             <>
               {state.lastTimeAdvanceNotice ? <div className="callout info">{state.lastTimeAdvanceNotice}</div> : null}
               <p className="intro-copy">
-                Read the unlocked emails, choose your responses, and watch how stakeholder trust changes.
+                Open messages from the left, respond in the right pane, and watch how each move shifts stakeholder confidence.
               </p>
 
               <div className="two-column-layout">

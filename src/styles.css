@@ -1,9 +1,23 @@
 :root {
-  font-family: "SF Pro Text", "Segoe UI", sans-serif;
-  color: #17324d;
-  background: linear-gradient(180deg, #f3f6fb 0%, #eef3f9 100%);
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  color: #163042;
+  background:
+    radial-gradient(circle at top left, rgba(153, 103, 53, 0.08), transparent 28%),
+    linear-gradient(180deg, #f5f0e7 0%, #eef3f3 54%, #e7eeef 100%);
   line-height: 1.5;
   font-weight: 400;
+  --ink-strong: #163042;
+  --ink: #284558;
+  --ink-soft: #587083;
+  --border: #d5ddd8;
+  --border-strong: #b8c4c0;
+  --surface: rgba(255, 252, 247, 0.92);
+  --surface-strong: #fffdf8;
+  --surface-muted: #f1f3ef;
+  --accent: #174d73;
+  --accent-soft: #d7e7ef;
+  --accent-strong: #8a5a2b;
+  --shadow: 0 18px 44px rgba(36, 46, 45, 0.08);
 }
 
 * {
@@ -14,8 +28,10 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  color: #17324d;
-  background: linear-gradient(180deg, #f3f6fb 0%, #eef3f9 100%);
+  color: var(--ink-strong);
+  background:
+    radial-gradient(circle at top left, rgba(153, 103, 53, 0.08), transparent 28%),
+    linear-gradient(180deg, #f5f0e7 0%, #eef3f3 54%, #e7eeef 100%);
 }
 
 button,
@@ -34,64 +50,92 @@ button {
 }
 
 .app-shell {
-  max-width: 1440px;
+  max-width: 1480px;
   margin: 0 auto;
-  padding: 2rem 1.25rem 2.5rem;
+  padding: clamp(1.4rem, 3vw, 2.8rem) clamp(1rem, 2vw, 1.8rem) 2.8rem;
+}
+
+.page-header {
+  margin-bottom: 1.15rem;
+}
+
+.page-eyebrow {
+  margin-bottom: 0.35rem;
+  color: var(--accent-strong);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .page-header h1 {
-  margin: 0 0 0.35rem;
-  font-size: clamp(2rem, 3vw, 2.7rem);
+  margin: 0 0 0.45rem;
+  font-family: "Iowan Old Style", "Palatino Linotype", serif;
+  font-size: clamp(2.3rem, 4.3vw, 3.85rem);
   line-height: 1.1;
+  letter-spacing: -0.02em;
 }
 
 .page-header p {
   margin: 0 0 1.4rem;
-  color: #547089;
+  max-width: 58rem;
+  color: var(--ink-soft);
+  font-size: 1rem;
 }
 
 .intro-copy {
-  margin: 0 0 1rem;
-  color: #29435d;
+  margin: 0 0 1.15rem;
+  color: var(--ink);
+  font-size: 0.98rem;
 }
 
 .briefing-card {
-  background: #ffffff;
-  border: 1px solid #d7e0ea;
-  border-radius: 18px;
-  padding: 1rem 1.1rem;
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.04);
-  margin-bottom: 1rem;
+  background:
+    linear-gradient(135deg, rgba(255, 252, 247, 0.98), rgba(248, 250, 247, 0.9)),
+    var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 1.1rem 1.2rem 1.2rem;
+  box-shadow: var(--shadow);
+  margin-bottom: 1.1rem;
 }
 
 .briefing-header {
-  font-size: 1rem;
+  font-size: 0.9rem;
   font-weight: 800;
-  color: #17324d;
-  margin-bottom: 0.7rem;
+  color: var(--accent-strong);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.28rem;
+}
+
+.briefing-kicker {
+  margin: 0 0 0.85rem;
+  color: var(--ink-soft);
+  font-size: 0.95rem;
 }
 
 .briefing-line {
   margin-bottom: 0.55rem;
-  color: #29435d;
+  color: var(--ink);
 }
 
 .context-expander {
   margin-top: 0.75rem;
-  border-top: 1px solid #e5edf5;
+  border-top: 1px solid rgba(184, 196, 192, 0.75);
   padding-top: 0.75rem;
 }
 
 .context-expander summary {
   cursor: pointer;
   font-weight: 700;
-  color: #23415d;
+  color: var(--ink-strong);
 }
 
 .context-list {
   margin: 0.65rem 0 0;
   padding-left: 1.2rem;
-  color: #35506b;
+  color: var(--ink);
 }
 
 .start-callout {
@@ -100,8 +144,8 @@ button {
 
 .two-column-layout {
   display: grid;
-  grid-template-columns: minmax(320px, 0.95fr) minmax(0, 1.55fr);
-  gap: 1.5rem;
+  grid-template-columns: minmax(320px, 0.92fr) minmax(0, 1.6fr);
+  gap: 1.35rem;
   align-items: start;
 }
 
@@ -111,8 +155,13 @@ button {
   min-width: 0;
 }
 
+.left-column {
+  position: sticky;
+  top: 1rem;
+}
+
 .time-panel {
-  margin-bottom: 1rem;
+  margin-bottom: 1.05rem;
 }
 
 .time-banner {
@@ -120,12 +169,14 @@ button {
   justify-content: space-between;
   align-items: stretch;
   gap: 1rem;
-  background: #17324d;
-  color: #f7fbff;
-  border-radius: 14px;
-  padding: 0.7rem 1rem;
+  background:
+    linear-gradient(135deg, #163d57, #28556f 58%, #476774);
+  color: #f7f7f2;
+  border-radius: 22px;
+  padding: 1rem 1.15rem;
   margin-bottom: 0.7rem;
   font-size: 0.92rem;
+  box-shadow: 0 18px 34px rgba(22, 61, 87, 0.18);
 }
 
 .time-banner-item {
@@ -134,10 +185,10 @@ button {
 }
 
 .time-banner-label {
-  color: #d0e4ff;
+  color: rgba(232, 240, 241, 0.78);
   font-size: 0.78rem;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.06em;
   margin-bottom: 0.2rem;
 }
 
@@ -151,50 +202,50 @@ button {
   justify-content: space-between;
   gap: 1rem;
   align-items: flex-start;
-  margin-bottom: 0.55rem;
+  margin-bottom: 0.65rem;
 }
 
 .deadline-title {
   font-weight: 700;
-  color: #17324d;
+  color: var(--ink-strong);
 }
 
 .deadline-note {
-  color: #5f7285;
+  color: var(--ink-soft);
   font-size: 0.9rem;
   margin-top: 0.15rem;
 }
 
 .deadline-help {
-  color: #35506b;
+  color: var(--ink);
   font-size: 0.84rem;
-  background: #eef5ff;
-  border: 1px solid #d7e7fb;
+  background: rgba(255, 252, 247, 0.72);
+  border: 1px solid var(--border);
   border-radius: 999px;
-  padding: 0.35rem 0.7rem;
+  padding: 0.42rem 0.82rem;
   white-space: nowrap;
 }
 
 .deadline-progress {
   width: 100%;
-  height: 0.85rem;
+  height: 0.95rem;
 }
 
 .deadline-progress::-webkit-progress-value {
-  background: linear-gradient(90deg, #175cd3 0%, #7aa8d9 100%);
+  background: linear-gradient(90deg, #8a5a2b 0%, #c38c50 100%);
 }
 
 .deadline-progress::-moz-progress-bar {
-  background: linear-gradient(90deg, #175cd3 0%, #7aa8d9 100%);
+  background: linear-gradient(90deg, #8a5a2b 0%, #c38c50 100%);
 }
 
 .mail-pane-title {
-  font-size: 0.92rem;
+  font-size: 0.88rem;
   font-weight: 700;
-  letter-spacing: 0.02em;
-  color: #23415d;
+  letter-spacing: 0.06em;
+  color: var(--accent-strong);
   text-transform: uppercase;
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.2rem;
 }
 
 .mail-toolbar {
@@ -202,48 +253,66 @@ button {
   justify-content: space-between;
   align-items: center;
   gap: 0.75rem;
-  margin-bottom: 0.65rem;
+  margin-bottom: 0.4rem;
 }
 
 .mail-count {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  background: #dcecff;
-  color: #0b4a8b;
+  background: rgba(138, 90, 43, 0.12);
+  color: #72451c;
   border-radius: 999px;
-  padding: 0.18rem 0.65rem;
+  padding: 0.24rem 0.68rem;
   font-size: 0.8rem;
   font-weight: 700;
 }
 
+.sidebar-panel {
+  background: linear-gradient(180deg, rgba(255, 252, 247, 0.88), rgba(248, 250, 247, 0.88));
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 1rem 1rem 1.1rem;
+  box-shadow: var(--shadow);
+}
+
+.panel-intro {
+  margin: 0 0 0.95rem;
+  color: var(--ink-soft);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
 .field-label {
   display: block;
-  font-size: 0.88rem;
+  font-size: 0.82rem;
   font-weight: 700;
-  color: #29435d;
-  margin: 0.65rem 0 0.35rem;
+  color: var(--ink);
+  margin: 0.8rem 0 0.35rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .text-input,
 .select-input {
   width: 100%;
-  border: 1px solid #c7d7e7;
-  border-radius: 12px;
-  padding: 0.7rem 0.85rem;
-  background: #fff;
-  color: #17324d;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 0.76rem 0.9rem;
+  background: rgba(255, 253, 248, 0.94);
+  color: var(--ink-strong);
 }
 
 .text-input:focus,
 .select-input:focus {
-  outline: 2px solid #7aa8d9;
+  outline: 2px solid rgba(23, 77, 115, 0.28);
   outline-offset: 1px;
+  border-color: var(--accent);
 }
 
 .radio-row {
   display: flex;
-  gap: 0.6rem;
+  gap: 0.5rem;
   flex-wrap: wrap;
 }
 
@@ -251,65 +320,58 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  background: #fff;
-  border: 1px solid #d8e2ee;
+  background: rgba(255, 253, 248, 0.94);
+  border: 1px solid var(--border);
   border-radius: 999px;
-  padding: 0.45rem 0.7rem;
+  padding: 0.45rem 0.78rem;
+  color: var(--ink);
 }
 
 .small-caption,
 .trust-timeline-caption {
-  margin-top: 0.55rem;
-  color: #5f7285;
+  margin-top: 0.6rem;
+  color: var(--ink-soft);
   font-size: 0.84rem;
 }
 
 .inbox-list {
-  margin-top: 0.8rem;
-}
-
-.mail-list-item {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.65rem;
-  align-items: stretch;
-  margin-bottom: 0.65rem;
+  margin-top: 0.95rem;
 }
 
 .mail-select-button {
+  display: block;
+  width: 100%;
   padding: 0;
   border: 0;
   background: transparent;
   text-align: left;
-}
-
-.list-action-button {
-  min-width: 92px;
-  align-self: center;
+  margin-bottom: 0.75rem;
 }
 
 .mail-row {
-  border: 1px solid #d8e2ee;
-  border-radius: 14px;
-  padding: 0.8rem 0.9rem;
-  background: #ffffff;
-  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+  border: 1px solid rgba(184, 196, 192, 0.8);
+  border-radius: 18px;
+  padding: 0.92rem 0.98rem;
+  background: rgba(255, 252, 247, 0.9);
+  transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
 
 .mail-row:hover {
-  border-color: #9bbce2;
-  background: #f8fbff;
+  border-color: rgba(23, 77, 115, 0.28);
+  background: rgba(252, 250, 245, 0.98);
+  box-shadow: 0 10px 24px rgba(36, 46, 45, 0.08);
+  transform: translateY(-1px);
 }
 
 .mail-row-selected {
-  border-color: #7aa8d9;
-  background: #eef5ff;
-  box-shadow: inset 0 0 0 1px rgba(122, 168, 217, 0.25);
+  border-color: rgba(23, 77, 115, 0.5);
+  background: rgba(235, 243, 243, 0.96);
+  box-shadow: inset 0 0 0 1px rgba(23, 77, 115, 0.16), 0 14px 28px rgba(36, 46, 45, 0.07);
 }
 
 .mail-row-unread {
-  border-left: 5px solid #1a73e8;
-  background: #f8fbff;
+  border-left: 5px solid #8a5a2b;
+  background: rgba(255, 250, 242, 0.96);
 }
 
 .mail-row-header {
@@ -328,7 +390,7 @@ button {
 }
 
 .mail-unread-dot {
-  color: #1a73e8;
+  color: #8a5a2b;
   font-size: 0.9rem;
   line-height: 1;
 }
@@ -338,7 +400,7 @@ button {
 }
 
 .mail-sender {
-  color: #17324d;
+  color: var(--ink-strong);
   font-size: 0.98rem;
 }
 
@@ -348,21 +410,22 @@ button {
 }
 
 .mail-time {
-  color: #5f7285;
+  color: var(--ink-soft);
   font-size: 0.78rem;
   white-space: nowrap;
 }
 
 .mail-subject {
-  color: #17324d;
-  margin-bottom: 0.18rem;
+  color: var(--ink-strong);
+  margin-bottom: 0.24rem;
+  line-height: 1.4;
 }
 
 .mail-preview {
-  color: #5f7285;
+  color: var(--ink-soft);
   font-size: 0.84rem;
-  line-height: 1.4;
-  margin-bottom: 0.4rem;
+  line-height: 1.5;
+  margin-bottom: 0.5rem;
 }
 
 .mail-tags {
@@ -382,13 +445,13 @@ button {
 }
 
 .mail-badge-unread {
-  background: #1a73e8;
-  color: white;
+  background: #8a5a2b;
+  color: #fffaf3;
 }
 
 .mail-badge-read {
-  background: #e8edf3;
-  color: #5f7285;
+  background: #e7ece9;
+  color: var(--ink-soft);
 }
 
 .mail-badge-handled {
@@ -397,16 +460,16 @@ button {
 }
 
 .mail-badge-stakeholder {
-  background: #eef3f8;
-  color: #35506b;
+  background: #e6eeec;
+  color: var(--ink);
 }
 
 .mail-message-card {
-  background: #ffffff;
-  border: 1px solid #d7e0ea;
-  border-radius: 18px;
-  padding: 1.2rem 1.3rem;
-  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.05);
+  background: linear-gradient(180deg, rgba(255, 252, 247, 0.98), rgba(250, 251, 248, 0.94));
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 1.25rem 1.35rem;
+  box-shadow: var(--shadow);
 }
 
 .mail-message-topline {
@@ -418,10 +481,12 @@ button {
 }
 
 .mail-message-subject {
-  font-size: clamp(1.4rem, 2vw, 1.65rem);
+  font-family: "Iowan Old Style", "Palatino Linotype", serif;
+  font-size: clamp(1.55rem, 2.3vw, 2rem);
   font-weight: 700;
-  color: #17324d;
+  color: var(--ink-strong);
   line-height: 1.25;
+  letter-spacing: -0.02em;
 }
 
 .mail-message-badge {
@@ -434,19 +499,19 @@ button {
 }
 
 .mail-badge-action {
-  background: #fff1df;
-  color: #b54708;
+  background: #faead5;
+  color: #8a5a2b;
 }
 
 .mail-badge-fyi {
-  background: #e8f1fd;
-  color: #175cd3;
+  background: #deeaee;
+  color: var(--accent);
 }
 
 .mail-meta-row {
-  color: #547089;
+  color: var(--ink-soft);
   font-size: 0.92rem;
-  margin-bottom: 0.18rem;
+  margin-bottom: 0.24rem;
 }
 
 .attachments-title {
@@ -462,10 +527,10 @@ button {
 
 .mail-attachment-chip {
   display: inline-block;
-  background: #eef3f8;
-  color: #35506b;
+  background: #ecefe8;
+  color: var(--ink);
   border-radius: 999px;
-  padding: 0.18rem 0.65rem;
+  padding: 0.22rem 0.72rem;
   font-size: 0.78rem;
   font-weight: 600;
 }
@@ -478,20 +543,20 @@ button {
 }
 
 .mail-message-body {
-  color: #21384f;
+  color: var(--ink-strong);
   font-size: 0.98rem;
-  line-height: 1.65;
+  line-height: 1.72;
   background: transparent;
 }
 
 .decision-summary {
-  background: #f6f9fc;
-  border: 1px solid #d7e0ea;
-  border-radius: 12px;
-  padding: 0.7rem 0.85rem;
-  color: #29435d;
+  background: rgba(242, 244, 240, 0.9);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 0.85rem 0.95rem;
+  color: var(--ink);
   font-size: 0.92rem;
-  margin-bottom: 0.85rem;
+  margin-bottom: 1rem;
 }
 
 .choice-block {
@@ -499,32 +564,33 @@ button {
 }
 
 .choice-hint {
-  color: #5f7285;
+  color: var(--ink-soft);
   font-size: 0.82rem;
-  margin: 0.15rem 0 0 0.1rem;
+  margin: 0.25rem 0 0 0.15rem;
 }
 
 .section-title {
   margin: 0 0 0.7rem;
   font-size: 1.08rem;
+  color: var(--ink-strong);
 }
 
 .section-divider {
   height: 1px;
-  background: #dbe6f1;
+  background: rgba(184, 196, 192, 0.72);
   margin: 1.25rem 0;
 }
 
 .callout {
-  border-radius: 14px;
-  padding: 0.85rem 1rem;
-  border: 1px solid #d7e0ea;
-  background: #fff;
+  border-radius: 18px;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border);
+  background: rgba(255, 252, 247, 0.9);
 }
 
 .callout.info {
-  background: #eef5ff;
-  color: #1f4c82;
+  background: #e5eef2;
+  color: #244b63;
 }
 
 .callout.success {
@@ -538,8 +604,8 @@ button {
 }
 
 .callout.neutral {
-  background: #ffffff;
-  color: #29435d;
+  background: rgba(255, 252, 247, 0.92);
+  color: var(--ink);
 }
 
 .error-list {
@@ -549,10 +615,11 @@ button {
 
 .primary-button,
 .secondary-button {
-  border-radius: 12px;
-  padding: 0.72rem 1rem;
-  border: 1px solid #7aa8d9;
-  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+  border-radius: 14px;
+  padding: 0.76rem 1.05rem;
+  border: 1px solid var(--border-strong);
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+  font-weight: 700;
 }
 
 .primary-button:hover,
@@ -561,14 +628,15 @@ button {
 }
 
 .primary-button {
-  background: #175cd3;
-  color: #fff;
-  border-color: #175cd3;
+  background: var(--accent);
+  color: #f8fbfb;
+  border-color: var(--accent);
+  box-shadow: 0 12px 24px rgba(23, 77, 115, 0.18);
 }
 
 .secondary-button {
-  background: #fff;
-  color: #17324d;
+  background: rgba(255, 252, 247, 0.9);
+  color: var(--ink-strong);
 }
 
 .wide-button {
@@ -587,19 +655,21 @@ button {
 }
 
 .trust-expander {
-  background: #fff;
-  border: 1px solid #d7e0ea;
-  border-radius: 16px;
+  background: rgba(255, 252, 247, 0.9);
+  border: 1px solid var(--border);
+  border-radius: 20px;
   overflow: hidden;
+  box-shadow: var(--shadow);
 }
 
 .trust-expander summary,
 .reply-expander summary {
   cursor: pointer;
   list-style: none;
-  padding: 0.9rem 1rem;
+  padding: 0.95rem 1rem;
   font-weight: 700;
   user-select: none;
+  color: var(--ink-strong);
 }
 
 .trust-expander summary::-webkit-details-marker,
@@ -615,26 +685,27 @@ button {
 .reply-editor {
   width: 100%;
   min-height: 11rem;
-  border: 1px solid #c7d7e7;
-  border-radius: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
   padding: 0.8rem 0.9rem;
-  background: #fff;
-  color: #17324d;
+  background: rgba(255, 253, 248, 0.96);
+  color: var(--ink-strong);
   resize: vertical;
   font-family: "SF Mono", "Menlo", monospace;
   line-height: 1.55;
 }
 
 .reply-editor:focus {
-  outline: 2px solid #7aa8d9;
+  outline: 2px solid rgba(23, 77, 115, 0.28);
   outline-offset: 1px;
+  border-color: var(--accent);
 }
 
 .draft-expander {
   margin-top: 0.85rem;
-  border: 1px solid #d7e0ea;
-  border-radius: 14px;
-  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: rgba(255, 252, 247, 0.9);
 }
 
 .draft-send-row {
@@ -658,15 +729,16 @@ button {
 }
 
 .trust-stakeholder {
-  color: #17324d;
+  color: var(--ink-strong);
   font-weight: 700;
   font-size: 0.92rem;
 }
 
 .trust-help {
-  color: #5f7285;
+  color: var(--ink-soft);
   font-size: 0.78rem;
-  margin-bottom: 0.2rem;
+  margin-bottom: 0.3rem;
+  line-height: 1.45;
 }
 
 progress {
@@ -677,17 +749,17 @@ progress {
 }
 
 progress::-webkit-progress-bar {
-  background: #e8edf3;
+  background: #e6ebe8;
   border-radius: 999px;
 }
 
 progress::-webkit-progress-value {
-  background: linear-gradient(90deg, #175cd3 0%, #7aa8d9 100%);
+  background: linear-gradient(90deg, #174d73 0%, #6a8a99 100%);
   border-radius: 999px;
 }
 
 progress::-moz-progress-bar {
-  background: linear-gradient(90deg, #175cd3 0%, #7aa8d9 100%);
+  background: linear-gradient(90deg, #174d73 0%, #6a8a99 100%);
   border-radius: 999px;
 }
 
@@ -714,9 +786,9 @@ progress::-moz-progress-bar {
 
 .table-wrap {
   overflow-x: auto;
-  border: 1px solid #d7e0ea;
-  border-radius: 14px;
-  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: rgba(255, 252, 247, 0.9);
 }
 
 .data-table {
@@ -734,8 +806,9 @@ progress::-moz-progress-bar {
 }
 
 .data-table th {
-  background: #f6f9fc;
+  background: #f1f3ef;
   font-size: 0.86rem;
+  color: var(--ink);
 }
 
 .data-table tbody tr:last-child td {
@@ -751,6 +824,10 @@ progress::-moz-progress-bar {
     grid-template-columns: 1fr;
   }
 
+  .left-column {
+    position: static;
+  }
+
   .time-banner {
     flex-direction: column;
     align-items: flex-start;
@@ -764,14 +841,6 @@ progress::-moz-progress-bar {
 @media (max-width: 640px) {
   .app-shell {
     padding: 1.2rem 0.9rem 2rem;
-  }
-
-  .mail-list-item {
-    grid-template-columns: 1fr;
-  }
-
-  .list-action-button {
-    width: 100%;
   }
 
   .mail-message-topline {

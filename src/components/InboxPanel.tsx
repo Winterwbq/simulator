@@ -25,11 +25,14 @@ export function InboxPanel({
   const filterOptions = ["All", ...Array.from(new Set(state.availableIds.map((messageId) => story.messages[messageId].stakeholder))).sort()];
 
   return (
-    <section>
+    <section className="sidebar-panel">
       <PanelHeader title="Inbox" badgeText={`${unreadCount} unread`} />
+      <p className="panel-intro">
+        Open the next message, compare stakeholder signals, and respond before the deadline hardens the narrative.
+      </p>
 
       <label className="field-label" htmlFor="search-inbox">
-        Search inbox
+        Find a message
       </label>
       <input
         id="search-inbox"
@@ -40,7 +43,7 @@ export function InboxPanel({
         onChange={(event) => onSearchChange(event.target.value)}
       />
 
-      <div className="field-label">Quick filters</div>
+      <div className="field-label">Show</div>
       <div className="radio-row">
         {(["All", "Unread", "Resolved"] as const).map((option) => (
           <label className="radio-pill" key={option}>
@@ -56,7 +59,7 @@ export function InboxPanel({
       </div>
 
       <label className="field-label" htmlFor="stakeholder-filter">
-        Stakeholder filter
+        Stakeholder
       </label>
       <select
         id="stakeholder-filter"
@@ -71,7 +74,7 @@ export function InboxPanel({
         ))}
       </select>
 
-      <div className="small-caption">{`Unlocked emails: ${state.availableIds.length}`}</div>
+      <div className="small-caption">{`${state.availableIds.length} unlocked messages`}</div>
 
       {filteredIds.length > 0 ? (
         <div className="inbox-list">
@@ -97,30 +100,30 @@ export function InboxPanel({
                   : "mail-badge-unread";
 
             return (
-              <div className="mail-list-item" key={messageId}>
-                <button className="mail-select-button" type="button" onClick={() => onSelectMessage(messageId)}>
-                  <div className={rowClasses.join(" ")}>
-                    <div className="mail-row-header">
-                      <div className="mail-row-left">
-                        <span className={isUnread ? "mail-unread-dot" : "mail-unread-dot mail-unread-dot-hidden"}>●</span>
-                        <div className={isUnread ? "mail-sender mail-sender-unread" : "mail-sender"}>{message.from}</div>
-                      </div>
-                      <div className="mail-time">{message.time}</div>
+              <button
+                className="mail-select-button"
+                key={messageId}
+                type="button"
+                onClick={() => onSelectMessage(messageId)}
+              >
+                <div className={rowClasses.join(" ")}>
+                  <div className="mail-row-header">
+                    <div className="mail-row-left">
+                      <span className={isUnread ? "mail-unread-dot" : "mail-unread-dot mail-unread-dot-hidden"}>●</span>
+                      <div className={isUnread ? "mail-sender mail-sender-unread" : "mail-sender"}>{message.from}</div>
                     </div>
-                    <div className={isUnread ? "mail-subject mail-subject-unread" : "mail-subject"}>{message.subject}</div>
-                    <div className="mail-preview">{getMessagePreview(message.body)}</div>
-                    <div className="mail-tags">
-                      <span className={`mail-badge ${statusClass}`}>{statusText}</span>
-                      <span className="mail-badge mail-badge-stakeholder">
-                        {`${message.stakeholder.charAt(0).toUpperCase()}${message.stakeholder.slice(1)}`}
-                      </span>
-                    </div>
+                    <div className="mail-time">{message.time}</div>
                   </div>
-                </button>
-                <button className="secondary-button list-action-button" type="button" onClick={() => onSelectMessage(messageId)}>
-                  {isSelected ? "Selected" : "View"}
-                </button>
-              </div>
+                  <div className={isUnread ? "mail-subject mail-subject-unread" : "mail-subject"}>{message.subject}</div>
+                  <div className="mail-preview">{getMessagePreview(message.body)}</div>
+                  <div className="mail-tags">
+                    <span className={`mail-badge ${statusClass}`}>{statusText}</span>
+                    <span className="mail-badge mail-badge-stakeholder">
+                      {`${message.stakeholder.charAt(0).toUpperCase()}${message.stakeholder.slice(1)}`}
+                    </span>
+                  </div>
+                </div>
+              </button>
             );
           })}
         </div>
