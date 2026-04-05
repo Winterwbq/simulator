@@ -1,0 +1,32 @@
+{
+  "name": "inbox-simulator-ts",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently --names llama,server,client --prefix-colors blue,green,magenta --kill-signal SIGINT --kill-timeout 5000 --kill-others-on-fail \"npm:dev:llama\" \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:client": "vite",
+    "dev:llama": "tsx scripts/dev-llama.ts",
+    "dev:server": "tsx server/index.ts",
+    "start": "npm run dev",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "express": "^5.1.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.5.2",
+    "@types/react": "^19.1.2",
+    "@types/react-dom": "^19.1.2",
+    "@vitejs/plugin-react": "^5.0.0",
+    "concurrently": "^9.2.1",
+    "tsx": "^4.20.5",
+    "typescript": "^5.8.3",
+    "vite": "^7.0.0"
+  }
+}

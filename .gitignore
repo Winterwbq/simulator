@@ -1,0 +1,9 @@
+.llama-tools/
+.DS_Store
+!models/.gitkeep
+llama.cpp/
+
+node_modules/
+dist/
+build/
+models/
