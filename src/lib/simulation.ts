@@ -14,7 +14,6 @@ import type {
   Choice,
   DraftComposerState,
   DraftGradeResult,
-  DraftPlayLogEntry,
   Ending,
   KnownStakeholder,
   Message,
@@ -23,6 +22,7 @@ import type {
   ReplyType,
   SimulationState,
   StakeholderDeltas,
+  StakeholderExplanations,
   Story,
   TrustScores,
 } from "./types";
@@ -86,7 +86,6 @@ export function initializeSimulation(story: Story): SimulationState {
     trust: initialTrust,
     logEntries: [`Simulation started as ${meta.role} in ${meta.setting}.`],
     decisionLog: [],
-    playLog: [],
     trustHistory: [{ step_index: 0, label: "Start", trust: { ...initialTrust } }],
     searchQuery: "",
     quickFilter: "All",
@@ -98,7 +97,6 @@ export function initializeSimulation(story: Story): SimulationState {
     simulationComplete: false,
     showStartPrompt: true,
     draftReplies: {},
-    lastEvaluation: null,
     replyEvaluationError: null,
     replyEvaluationPending: false,
   };
@@ -118,6 +116,16 @@ function isStakeholderDeltas(value: unknown): value is StakeholderDeltas {
 
   return KNOWN_STAKEHOLDERS.every(
     (stakeholder) => typeof (value as StakeholderDeltas)[stakeholder] === "number",
+  );
+}
+
+function isStakeholderExplanations(value: unknown): value is StakeholderExplanations {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  return KNOWN_STAKEHOLDERS.every(
+    (stakeholder) => typeof (value as StakeholderExplanations)[stakeholder] === "string",
   );
 }
 
@@ -142,22 +150,62 @@ function isDraftComposerMap(value: unknown): value is Record<string, DraftCompos
   );
 }
 
-function isReplyEvaluationEntry(value: unknown): value is ReplyEvaluationEntry {
+function buildFallbackExplanation(stakeholder: KnownStakeholder, delta: number): string {
+  const label = `${stakeholder.charAt(0).toUpperCase()}${stakeholder.slice(1)}`;
+
+  if (delta > 0) {
+    return `This reply had a positive effect on ${label.toLowerCase()} trust.`;
+  }
+  if (delta < 0) {
+    return `This reply had a negative effect on ${label.toLowerCase()} trust.`;
+  }
+  return `This reply had little direct effect on ${label.toLowerCase()} trust.`;
+}
+
+function normalizeStakeholderExplanations(
+  value: unknown,
+  deltas: StakeholderDeltas,
+): StakeholderExplanations {
+  if (isStakeholderExplanations(value)) {
+    return value;
+  }
+
+  return KNOWN_STAKEHOLDERS.reduce((accumulator, stakeholder) => {
+    accumulator[stakeholder] = buildFallbackExplanation(stakeholder, deltas[stakeholder]);
+    return accumulator;
+  }, {} as StakeholderExplanations);
+}
+
+function coerceReplyEvaluationEntry(value: unknown): ReplyEvaluationEntry | null {
   if (typeof value !== "object" || value === null) {
-    return false;
+    return null;
   }
 
   const entry = value as Partial<ReplyEvaluationEntry>;
-  return (
-    typeof entry.step_index === "number" &&
-    typeof entry.message_id === "string" &&
-    typeof entry.subject === "string" &&
-    typeof entry.reply_source === "string" &&
-    typeof entry.response_label === "string" &&
-    typeof entry.reply_text === "string" &&
-    typeof entry.reply_type === "string" &&
-    isStakeholderDeltas(entry.trust_deltas)
-  );
+  if (
+    typeof entry.step_index !== "number" ||
+    typeof entry.message_id !== "string" ||
+    typeof entry.subject !== "string" ||
+    typeof entry.reply_source !== "string" ||
+    typeof entry.response_label !== "string" ||
+    typeof entry.reply_text !== "string" ||
+    typeof entry.reply_type !== "string" ||
+    !isStakeholderDeltas(entry.trust_deltas)
+  ) {
+    return null;
+  }
+
+  return {
+    step_index: entry.step_index,
+    message_id: entry.message_id,
+    subject: entry.subject,
+    reply_source: entry.reply_source,
+    response_label: entry.response_label,
+    reply_text: entry.reply_text,
+    reply_type: entry.reply_type,
+    trust_deltas: entry.trust_deltas,
+    trust_explanations: normalizeStakeholderExplanations(entry.trust_explanations, entry.trust_deltas),
+  };
 }
 
 export function loadSimulationState(story: Story): SimulationState {
@@ -173,7 +221,6 @@ export function loadSimulationState(story: Story): SimulationState {
 
   try {
     const parsed = JSON.parse(raw) as Partial<SimulationState> & {
-      lastDraftEvaluation?: DraftPlayLogEntry | null;
       draftSubmissionError?: string | null;
       draftSubmissionPending?: boolean;
     };
@@ -194,20 +241,17 @@ export function loadSimulationState(story: Story): SimulationState {
       availableIds: parsed.availableIds,
       openedIds: parsed.openedIds,
       handledIds: parsed.handledIds,
-      decisionLog: Array.isArray(parsed.decisionLog) ? parsed.decisionLog : fallback.decisionLog,
-      playLog: Array.isArray(parsed.playLog) ? parsed.playLog : fallback.playLog,
+      decisionLog: Array.isArray(parsed.decisionLog)
+        ? parsed.decisionLog
+            .map((entry) => coerceReplyEvaluationEntry(entry))
+            .filter((entry): entry is ReplyEvaluationEntry => entry !== null)
+        : fallback.decisionLog,
       trustHistory: Array.isArray(parsed.trustHistory) ? parsed.trustHistory : fallback.trustHistory,
       logEntries: Array.isArray(parsed.logEntries) ? parsed.logEntries : fallback.logEntries,
       quickFilter: isQuickFilter(parsed.quickFilter) ? parsed.quickFilter : fallback.quickFilter,
       showStartPrompt:
         typeof parsed.showStartPrompt === "boolean" ? parsed.showStartPrompt : false,
       draftReplies: isDraftComposerMap(parsed.draftReplies) ? parsed.draftReplies : fallback.draftReplies,
-      lastEvaluation:
-        isReplyEvaluationEntry(parsed.lastEvaluation)
-          ? parsed.lastEvaluation
-          : isReplyEvaluationEntry(parsed.lastDraftEvaluation)
-            ? parsed.lastDraftEvaluation
-            : fallback.lastEvaluation,
       replyEvaluationError:
         typeof parsed.replyEvaluationError === "string"
           ? parsed.replyEvaluationError
@@ -292,6 +336,7 @@ export function applyChoice(
     replyText: buildPresetReplyText(message, choice),
     replyType: inferReplyTypeForMessage(message),
     trustDeltas: gradedResult.trust_deltas,
+    trustExplanations: gradedResult.trust_explanations,
     unlockedCandidateIds: choice.next,
     logLine: choice.log.trim()
       ? `You chose the preset reply: ${choice.log.trim()}.`
@@ -335,6 +380,7 @@ export function applyDraftedReply(
     replyText: draftedReplyText,
     replyType: composer.replyType,
     trustDeltas: gradedResult.trust_deltas,
+    trustExplanations: gradedResult.trust_explanations,
     unlockedCandidateIds: getDraftUnlockIds(story, message),
     logLine: `You drafted a ${composer.replyType.toLowerCase()} for "${message.subject}".`,
   });
@@ -357,11 +403,6 @@ export function allActionableMessagesHandled(
     const message = story.messages[messageId];
     return message.choices.length === 0 || handledIds.includes(messageId);
   });
-}
-
-export function pickNextMessage(state: Pick<SimulationState, "availableIds" | "handledIds">): string | null {
-  const nextUnreadActionable = state.availableIds.find((messageId) => !state.handledIds.includes(messageId));
-  return nextUnreadActionable ?? state.availableIds[0] ?? null;
 }
 
 export function parseCondition(rule: string): [string, number] | null {
@@ -601,14 +642,8 @@ export function getTrustBand(value: number): [string, string, string] {
   ];
 }
 
-export function formatEffects(effects: Partial<Record<KnownStakeholder, number>>): string {
-  if (Object.keys(effects).length === 0) {
-    return "No trust change";
-  }
-
-  return KNOWN_STAKEHOLDERS.filter((stakeholder) => effects[stakeholder] !== undefined)
-    .map((stakeholder) => `${capitalize(stakeholder)} ${Number(effects[stakeholder]).toString().replace(/^/, Number(effects[stakeholder]) >= 0 ? "+" : "")}`)
-    .join(", ");
+export function formatSignedNumber(value: number): string {
+  return value >= 0 ? `+${value}` : `${value}`;
 }
 
 export function getTotalDeltas(state: SimulationState): Record<KnownStakeholder, number> {
@@ -624,37 +659,6 @@ export function getTotalDeltas(state: SimulationState): Record<KnownStakeholder,
   }
 
   return totals;
-}
-
-export function summarizeStakeholderOutcome(
-  state: Pick<SimulationState, "decisionLog">,
-  stakeholder: KnownStakeholder,
-): string {
-  const totalDelta = state.decisionLog.reduce(
-    (total, entry) => total + Number(entry.trust_deltas[stakeholder] ?? 0),
-    0,
-  );
-  const contributors = state.decisionLog
-    .map((entry) => ({
-      entry,
-      delta: Number(entry.trust_deltas[stakeholder] ?? 0),
-    }))
-    .filter((item) => item.delta !== 0)
-    .sort((left, right) => Math.abs(right.delta) - Math.abs(left.delta));
-
-  if (contributors.length === 0) {
-    return "No graded reply materially shifted this stakeholder yet.";
-  }
-
-  const strongest = contributors[0];
-  const direction =
-    totalDelta > 0
-      ? `Net ${formatSignedNumber(totalDelta)}. The biggest lift came from "${strongest.entry.response_label}" on "${strongest.entry.subject}".`
-      : totalDelta < 0
-        ? `Net ${formatSignedNumber(totalDelta)}. The biggest drag came from "${strongest.entry.response_label}" on "${strongest.entry.subject}".`
-        : `Net 0. The sharpest movement still came from "${strongest.entry.response_label}" on "${strongest.entry.subject}".`;
-
-  return direction;
 }
 
 export function getMessagePreview(body: string, length = 96): string {
@@ -681,10 +685,6 @@ function isQuickFilter(value: unknown): value is QuickFilter {
   return value === "All" || value === "Unread" || value === "Resolved";
 }
 
-function capitalize(value: string): string {
-  return `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
-}
-
 function applyEvaluatedReply(
   story: Story,
   state: SimulationState,
@@ -696,6 +696,7 @@ function applyEvaluatedReply(
     replyText: string;
     replyType: ReplyType;
     trustDeltas: StakeholderDeltas;
+    trustExplanations: StakeholderExplanations;
     unlockedCandidateIds: string[];
     logLine: string;
   },
@@ -729,6 +730,7 @@ function applyEvaluatedReply(
     reply_text: input.replyText,
     reply_type: input.replyType,
     trust_deltas: { ...input.trustDeltas },
+    trust_explanations: { ...input.trustExplanations },
   };
 
   const trustHistory = [
@@ -754,7 +756,6 @@ function applyEvaluatedReply(
     handledIds,
     trust,
     decisionLog: [...state.decisionLog, evaluationEntry],
-    playLog: [...state.playLog, evaluationEntry],
     trustHistory,
     logEntries,
     currentMinutes,
@@ -762,14 +763,9 @@ function applyEvaluatedReply(
     ending,
     simulationComplete: ending ? false : allActionableMessagesHandled(story, availableIds, handledIds),
     selectedMessageId: input.messageId,
-    lastEvaluation: evaluationEntry,
     replyEvaluationError: null,
     replyEvaluationPending: false,
   };
 
   return nextBaseState;
-}
-
-function formatSignedNumber(value: number): string {
-  return value >= 0 ? `+${value}` : `${value}`;
 }

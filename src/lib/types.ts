@@ -17,6 +17,7 @@ export type ReplyType =
   | "Internal update";
 export type ReplySource = "preset" | "draft";
 export type StakeholderDeltas = Record<KnownStakeholder, number>;
+export type StakeholderExplanations = Record<KnownStakeholder, string>;
 
 export interface Choice {
   label: string;
@@ -77,6 +78,7 @@ export interface DraftComposerState {
 
 export interface DraftGradeResult {
   trust_deltas: StakeholderDeltas;
+  trust_explanations: StakeholderExplanations;
 }
 
 export interface ReplyEvaluationEntry extends DraftGradeResult {
@@ -90,7 +92,6 @@ export interface ReplyEvaluationEntry extends DraftGradeResult {
 }
 
 export type DecisionLogEntry = ReplyEvaluationEntry;
-export type DraftPlayLogEntry = ReplyEvaluationEntry;
 
 export type DraftGradingStatus =
   | "checking"
@@ -122,7 +123,6 @@ export interface SimulationState {
   trust: TrustScores;
   logEntries: string[];
   decisionLog: DecisionLogEntry[];
-  playLog: DraftPlayLogEntry[];
   trustHistory: TrustSnapshot[];
   searchQuery: string;
   quickFilter: QuickFilter;
@@ -134,7 +134,6 @@ export interface SimulationState {
   simulationComplete: boolean;
   showStartPrompt: boolean;
   draftReplies: Record<string, DraftComposerState>;
-  lastEvaluation: ReplyEvaluationEntry | null;
   replyEvaluationError: string | null;
   replyEvaluationPending: boolean;
 }

@@ -1,5 +1,5 @@
 import { KNOWN_STAKEHOLDERS } from "../lib/types";
-import { formatEffects, getTotalDeltas, summarizeStakeholderOutcome } from "../lib/simulation";
+import { formatSignedNumber, getTotalDeltas } from "../lib/simulation";
 import type { SimulationState } from "../lib/types";
 
 interface AnalysisPanelsProps {
@@ -10,25 +10,9 @@ interface AnalysisPanelsProps {
 export function AnalysisPanels({ state, logLimit }: AnalysisPanelsProps) {
   const totals = getTotalDeltas(state);
   const entries = typeof logLimit === "number" ? state.logEntries.slice(-logLimit) : state.logEntries;
-  const lastEvaluation = state.lastEvaluation;
 
   return (
     <>
-      {lastEvaluation ? (
-        <>
-          <div className="section-divider" />
-          <h3 className="section-title">Last Reply Impact</h3>
-          <div className="small-caption">
-            {`${lastEvaluation.response_label} • ${lastEvaluation.reply_type} for "${lastEvaluation.subject}"`}
-          </div>
-
-          <div className="section-divider" />
-          <h4 className="section-title">Trust delta summary</h4>
-          <div className="callout neutral">{formatEffects(lastEvaluation.trust_deltas)}</div>
-        </>
-      ) : null}
-
-      <div className="section-divider" />
       <h3 className="section-title">System Log</h3>
       <pre className="system-log">
         {entries.map((entry, index) => `${index + 1}. ${entry}`).join("\n")}
@@ -47,18 +31,31 @@ export function AnalysisPanels({ state, logLimit }: AnalysisPanelsProps) {
                   <th>Step #</th>
                   <th>Email subject</th>
                   <th>Choice label</th>
-                  <th>Effects</th>
+                  {KNOWN_STAKEHOLDERS.map((stakeholder) => (
+                    <th key={stakeholder}>{stakeholder.charAt(0).toUpperCase() + stakeholder.slice(1)}</th>
+                  ))}
+                  <th>Net</th>
                 </tr>
               </thead>
               <tbody>
-                {state.decisionLog.map((entry) => (
-                  <tr key={entry.step_index}>
-                    <td>{entry.step_index}</td>
-                    <td>{entry.subject || entry.message_id}</td>
-                    <td>{entry.response_label}</td>
-                    <td>{formatEffects(entry.trust_deltas)}</td>
-                  </tr>
-                ))}
+                {state.decisionLog.map((entry) => {
+                  const netDelta = KNOWN_STAKEHOLDERS.reduce(
+                    (total, stakeholder) => total + Number(entry.trust_deltas[stakeholder] ?? 0),
+                    0,
+                  );
+
+                  return (
+                    <tr key={entry.step_index}>
+                      <td>{entry.step_index}</td>
+                      <td>{entry.subject || entry.message_id}</td>
+                      <td>{entry.response_label}</td>
+                      {KNOWN_STAKEHOLDERS.map((stakeholder) => (
+                        <td key={stakeholder}>{formatSignedNumber(Number(entry.trust_deltas[stakeholder] ?? 0))}</td>
+                      ))}
+                      <td>{formatSignedNumber(netDelta)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -86,17 +83,6 @@ export function AnalysisPanels({ state, logLimit }: AnalysisPanelsProps) {
           </div>
         </>
       )}
-
-      <div className="section-divider" />
-      <h3 className="section-title">Why This Outcome?</h3>
-      <div className="outcome-list">
-        {KNOWN_STAKEHOLDERS.map((stakeholder) => (
-          <p key={stakeholder}>
-            <strong>{stakeholder.charAt(0).toUpperCase() + stakeholder.slice(1)}</strong>
-            {`: ${summarizeStakeholderOutcome(state, stakeholder)}`}
-          </p>
-        ))}
-      </div>
     </>
   );
 }

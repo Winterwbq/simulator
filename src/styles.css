@@ -584,6 +584,91 @@ button {
   margin-bottom: 1rem;
 }
 
+.reply-impact-panel {
+  margin-top: 0.85rem;
+  background: rgba(255, 252, 247, 0.92);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 1rem;
+  box-shadow: var(--shadow);
+}
+
+.reply-impact-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.9rem;
+  margin-bottom: 0.85rem;
+}
+
+.reply-impact-net {
+  background: rgba(23, 77, 115, 0.1);
+  color: var(--accent);
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.82rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.reply-impact-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.impact-card {
+  background: rgba(242, 244, 240, 0.88);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 0.75rem 0.8rem;
+}
+
+.impact-label {
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin-bottom: 0.3rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.impact-value {
+  color: var(--ink-strong);
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.impact-explanation {
+  margin: 0.45rem 0 0;
+  color: var(--ink);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.reply-explanations {
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid rgba(184, 196, 192, 0.72);
+}
+
+.reply-explanations-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.impact-value-positive {
+  color: #067647;
+}
+
+.impact-value-negative {
+  color: #b42318;
+}
+
+.impact-value-neutral {
+  color: var(--ink);
+}
+
 .choice-block {
   margin-bottom: 0.85rem;
 }
@@ -861,11 +946,23 @@ progress::-moz-progress-bar {
   .deadline-row {
     flex-direction: column;
   }
+
+  .reply-impact-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 640px) {
   .app-shell {
     padding: 1.2rem 0.9rem 2rem;
+  }
+
+  .reply-impact-header {
+    flex-direction: column;
+  }
+
+  .reply-impact-grid {
+    grid-template-columns: 1fr;
   }
 
   .mail-message-topline {

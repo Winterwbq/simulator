@@ -26,8 +26,17 @@ type StakeholderImpacts = {
   media: ImpactLevel;
 };
 
+type StakeholderExplanations = {
+  regulator: string;
+  investor: string;
+  community: string;
+  engineering: string;
+  media: string;
+};
+
 type DraftGradeResult = {
   trust_deltas: StakeholderDeltas;
+  trust_explanations: StakeholderExplanations;
 };
 
 type GradeReplyRequest = {
@@ -103,8 +112,20 @@ const gradingSchema = {
       },
       required: ["regulator", "investor", "community", "engineering", "media"],
     },
+    trust_explanations: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        regulator: { type: "string" },
+        investor: { type: "string" },
+        community: { type: "string" },
+        engineering: { type: "string" },
+        media: { type: "string" },
+      },
+      required: ["regulator", "investor", "community", "engineering", "media"],
+    },
   },
-  required: ["trust_impacts"],
+  required: ["trust_impacts", "trust_explanations"],
 } as const;
 
 app.use(express.json({ limit: "1mb" }));
@@ -188,10 +209,13 @@ function buildGradingPrompt(requestBody: Required<GradeReplyRequest>) {
     "You are grading a player-written reply inside a governance and crisis-communications simulator.",
     "Return exactly one JSON object matching the schema.",
     "Do not include chain-of-thought, analysis text, think tags, markdown fences, or prose before or after the JSON.",
-    "Use exactly one top-level key: `trust_impacts`.",
+    "Use exactly two top-level keys: `trust_impacts` and `trust_explanations`.",
     "Inside `trust_impacts`, return one label for regulator, investor, community, engineering, and media.",
     "Allowed labels are: `strong_negative`, `negative`, `neutral`, `positive`, `strong_positive`.",
     "The server will map these labels to final trust deltas of -10, -5, 0, +5, and +10.",
+    "Inside `trust_explanations`, write one short sentence per stakeholder explaining why that stakeholder received its score.",
+    "Keep each explanation specific to this single reply and grounded in the reply text or the current email context.",
+    "Do not explain cumulative outcomes or other emails.",
     "Score only from the provided reply text and current email context.",
     "Be conservative. Weak, vague, evasive, or overly polished replies should not receive generous positive scores.",
     "If `source` is `preset`, the reply text is a concise canonical summary of the preset action. Grade that summary directly without inventing missing details.",
@@ -212,6 +236,13 @@ function buildGradingPrompt(requestBody: Required<GradeReplyRequest>) {
           community: "strong_positive",
           engineering: "positive",
           media: "negative",
+        },
+        trust_explanations: {
+          regulator: "The reply addresses governance concerns directly and signals responsible disclosure.",
+          investor: "The reply is credible but does not materially improve timeline confidence.",
+          community: "The reply shows visible public engagement and responds to local concerns.",
+          engineering: "The reply respects uncertainty and supports a technically honest response.",
+          media: "The reply still leaves enough ambiguity that coverage could remain skeptical.",
         },
       },
       null,
@@ -370,6 +401,25 @@ function normalizeTrustImpacts(raw: Record<string, unknown>): StakeholderImpacts
   };
 }
 
+function normalizeExplanation(value: unknown, fallback: string): string {
+  if (typeof value !== "string") {
+    return fallback;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : fallback;
+}
+
+function defaultExplanation(stakeholder: keyof StakeholderDeltas, delta: number): string {
+  if (delta > 0) {
+    return `This reply improved ${stakeholder} trust.`;
+  }
+  if (delta < 0) {
+    return `This reply reduced ${stakeholder} trust.`;
+  }
+  return `This reply had little direct effect on ${stakeholder} trust.`;
+}
+
 function normalizeTrustDeltas(raw: Record<string, unknown>): StakeholderDeltas {
   const impacts = normalizeTrustImpacts(raw);
 
@@ -382,10 +432,30 @@ function normalizeTrustDeltas(raw: Record<string, unknown>): StakeholderDeltas {
   };
 }
 
+function normalizeTrustExplanations(
+  raw: Record<string, unknown>,
+  deltas: StakeholderDeltas,
+): StakeholderExplanations {
+  const source =
+    raw.trust_explanations && typeof raw.trust_explanations === "object"
+      ? (raw.trust_explanations as Record<string, unknown>)
+      : raw;
+
+  return {
+    regulator: normalizeExplanation(source.regulator, defaultExplanation("regulator", deltas.regulator)),
+    investor: normalizeExplanation(source.investor, defaultExplanation("investor", deltas.investor)),
+    community: normalizeExplanation(source.community, defaultExplanation("community", deltas.community)),
+    engineering: normalizeExplanation(source.engineering, defaultExplanation("engineering", deltas.engineering)),
+    media: normalizeExplanation(source.media, defaultExplanation("media", deltas.media)),
+  };
+}
+
 function normalizeGradePayload(rawPayload: string): DraftGradeResult {
   const parsed = JSON.parse(extractJsonObject(rawPayload)) as Record<string, unknown>;
+  const trust_deltas = normalizeTrustDeltas(parsed);
   return {
-    trust_deltas: normalizeTrustDeltas(parsed),
+    trust_deltas,
+    trust_explanations: normalizeTrustExplanations(parsed, trust_deltas),
   };
 }
 
@@ -429,7 +499,7 @@ async function handleGradeReply(request: express.Request, response: express.Resp
       body: JSON.stringify({
         model: llamaModel,
         temperature: 0,
-        max_tokens: 220,
+        max_tokens: 420,
         stream: false,
         reasoning_format: "none",
         chat_template_kwargs: {
