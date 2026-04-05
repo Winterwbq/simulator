@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { story as storyData } from "./data/story";
 import { AnalysisPanels } from "./components/AnalysisPanels";
 import { BriefingPanel } from "./components/BriefingPanel";
 import { InboxPanel } from "./components/InboxPanel";
 import { OpenEmailPanel } from "./components/OpenEmailPanel";
 import { PanelHeader } from "./components/PanelHeader";
+import { StickyMissionBar } from "./components/StickyMissionBar";
 import { TimeBanner } from "./components/TimeBanner";
 import { TrustDashboard } from "./components/TrustDashboard";
 import { TrustOverviewStrip } from "./components/TrustOverviewStrip";
@@ -30,8 +31,11 @@ export default function App() {
   const [draftGradingHealth, setDraftGradingHealth] = useState<DraftGradingHealth>(
     DEFAULT_DRAFT_GRADING_HEALTH,
   );
+  const trustSnapshotRef = useRef<HTMLDivElement | null>(null);
+  const [showStickyMissionBar, setShowStickyMissionBar] = useState(false);
 
   const filteredIds = useMemo(() => getFilteredMessageIds(storyData, state), [state]);
+  const inOutcomeMode = Boolean(state.ending) || state.simulationComplete;
 
   useEffect(() => {
     if (validationErrors.length === 0) {
@@ -108,6 +112,34 @@ export default function App() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (state.showStartPrompt || inOutcomeMode) {
+      setShowStickyMissionBar(false);
+      return;
+    }
+
+    const updateStickyMissionBar = () => {
+      const trustSnapshot = trustSnapshotRef.current;
+      if (!trustSnapshot) {
+        setShowStickyMissionBar(false);
+        return;
+      }
+
+      const { bottom } = trustSnapshot.getBoundingClientRect();
+      setShowStickyMissionBar(bottom <= 72);
+    };
+
+    updateStickyMissionBar();
+
+    window.addEventListener("scroll", updateStickyMissionBar, { passive: true });
+    window.addEventListener("resize", updateStickyMissionBar);
+
+    return () => {
+      window.removeEventListener("scroll", updateStickyMissionBar);
+      window.removeEventListener("resize", updateStickyMissionBar);
+    };
+  }, [inOutcomeMode, state.showStartPrompt]);
 
   if (validationErrors.length > 0) {
     return (
@@ -218,7 +250,6 @@ export default function App() {
     }
   };
 
-  const inOutcomeMode = Boolean(state.ending) || state.simulationComplete;
   const pageTitle = state.ending
     ? `Ending: ${state.ending.name}`
     : inOutcomeMode
@@ -227,6 +258,10 @@ export default function App() {
 
   return (
     <main className="app-shell">
+      {!state.showStartPrompt && !inOutcomeMode ? (
+        <StickyMissionBar state={state} visible={showStickyMissionBar} />
+      ) : null}
+
       <div className="page-header">
         <div className="page-eyebrow">Policy communication simulator</div>
         <h1>{pageTitle}</h1>
@@ -282,7 +317,9 @@ export default function App() {
                 Work email-by-email in the main thread, keep an eye on the cumulative trust ribbon above, and open the records dock only when you need deeper history.
               </p>
 
-              <TrustOverviewStrip state={state} />
+              <div ref={trustSnapshotRef}>
+                <TrustOverviewStrip state={state} />
+              </div>
 
               <div className="workspace-layout">
                 <aside className="workspace-rail">

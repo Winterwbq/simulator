@@ -173,6 +173,149 @@ button {
   box-shadow: var(--shadow);
 }
 
+.sticky-mission-bar {
+  position: fixed;
+  top: 0.8rem;
+  left: 50%;
+  width: min(1460px, calc(100vw - 1rem));
+  transform: translate(-50%, -1rem);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 40;
+  transition:
+    opacity 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.sticky-mission-bar-visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.sticky-mission-shell {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.72rem 0.95rem;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(67, 78, 72, 0.78),
+      rgba(98, 87, 71, 0.76) 52%,
+      rgba(128, 101, 72, 0.74)
+    );
+  color: #f7f3ea;
+  border: 1px solid rgba(228, 220, 205, 0.34);
+  border-radius: 20px;
+  box-shadow:
+    0 18px 34px rgba(59, 53, 45, 0.15),
+    inset 0 1px 0 rgba(255, 249, 240, 0.14);
+  backdrop-filter: blur(16px);
+}
+
+.sticky-mission-side {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.sticky-mission-side-end {
+  justify-content: flex-end;
+}
+
+.deadline-ring {
+  position: relative;
+  width: 3rem;
+  height: 3rem;
+  flex: 0 0 auto;
+}
+
+.deadline-ring-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.deadline-ring-track,
+.deadline-ring-progress {
+  fill: none;
+  stroke-width: 4;
+}
+
+.deadline-ring-track {
+  stroke: rgba(245, 238, 227, 0.18);
+}
+
+.deadline-ring-progress {
+  stroke: #e0b16d;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.deadline-ring-center {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #fbf5eb;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+.sticky-mission-copy {
+  min-width: 0;
+}
+
+.sticky-mission-label {
+  color: rgba(248, 241, 229, 0.72);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.12rem;
+}
+
+.sticky-mission-value {
+  color: #fff9ef;
+  font-size: 1rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.sticky-score-strip {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.sticky-score-pill {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.45rem;
+  min-width: 0;
+  padding: 0.55rem 0.7rem;
+  border-radius: 14px;
+  background: rgba(255, 249, 239, 0.08);
+  border: 1px solid rgba(245, 236, 222, 0.14);
+}
+
+.sticky-score-name {
+  color: rgba(249, 242, 233, 0.76);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.sticky-score-value {
+  color: #fffaf0;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
 .trust-strip-header {
   display: flex;
   justify-content: space-between;
@@ -1037,6 +1180,26 @@ progress::-moz-progress-bar {
 }
 
 @media (max-width: 980px) {
+  .sticky-mission-bar {
+    top: 0.6rem;
+    width: calc(100vw - 1rem);
+  }
+
+  .sticky-mission-shell {
+    grid-template-columns: 1fr;
+    gap: 0.72rem;
+    padding: 0.75rem 0.85rem;
+  }
+
+  .sticky-mission-side,
+  .sticky-mission-side-end {
+    justify-content: space-between;
+  }
+
+  .sticky-score-strip {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
   .workspace-layout {
     grid-template-columns: 1fr;
   }
@@ -1068,6 +1231,38 @@ progress::-moz-progress-bar {
     padding: 1.2rem 0.9rem 2rem;
   }
 
+  .sticky-mission-bar {
+    top: 0.45rem;
+    width: calc(100vw - 1rem);
+  }
+
+  .sticky-mission-shell {
+    gap: 0.65rem;
+    padding: 0.68rem 0.72rem;
+    border-radius: 18px;
+  }
+
+  .deadline-ring {
+    width: 2.6rem;
+    height: 2.6rem;
+  }
+
+  .sticky-mission-value {
+    font-size: 0.92rem;
+  }
+
+  .sticky-score-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sticky-score-pill {
+    padding: 0.45rem 0.58rem;
+  }
+
+  .sticky-score-name {
+    font-size: 0.68rem;
+  }
+
   .reply-impact-header {
     flex-direction: column;
   }
@@ -1087,5 +1282,12 @@ progress::-moz-progress-bar {
 
   .action-row {
     flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sticky-mission-bar,
+  .deadline-ring-progress {
+    transition-duration: 0.01ms !important;
   }
 }
