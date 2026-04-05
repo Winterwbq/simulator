@@ -257,7 +257,7 @@ export default function App() {
       : storyData.meta.title;
 
   return (
-    <main className="app-shell">
+    <main className={showStickyMissionBar ? "app-shell app-shell-mission-bar-active" : "app-shell"}>
       {!state.showStartPrompt && !inOutcomeMode ? (
         <StickyMissionBar state={state} visible={showStickyMissionBar} />
       ) : null}

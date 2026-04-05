@@ -30,42 +30,44 @@ export function StickyMissionBar({ state, visible }: StickyMissionBarProps) {
       className={visible ? "sticky-mission-bar sticky-mission-bar-visible" : "sticky-mission-bar"}
       aria-hidden={!visible}
     >
-      <div className="sticky-mission-shell">
-        <div className="sticky-mission-side">
-          <div className="deadline-ring" aria-hidden="true">
-            <svg viewBox="0 0 52 52" className="deadline-ring-svg">
-              <circle className="deadline-ring-track" cx="26" cy="26" r={RING_RADIUS} />
-              <circle
-                className="deadline-ring-progress"
-                cx="26"
-                cy="26"
-                r={RING_RADIUS}
-                strokeDasharray={RING_CIRCUMFERENCE}
-                strokeDashoffset={ringOffset}
-              />
-            </svg>
-            <div className="deadline-ring-center">{Math.round(progressRatio * 100)}%</div>
-          </div>
-
-          <div className="sticky-mission-copy">
-            <div className="sticky-mission-label">Time remaining</div>
-            <div className="sticky-mission-value">{formatDuration(timeRemaining)}</div>
-          </div>
-        </div>
-
-        <div className="sticky-score-strip" aria-label="Current cumulative trust scores">
-          {KNOWN_STAKEHOLDERS.map((stakeholder) => (
-            <div className="sticky-score-pill" key={stakeholder}>
-              <span className="sticky-score-name">{getStakeholderLabel(stakeholder)}</span>
-              <strong className="sticky-score-value">{state.trust[stakeholder]}</strong>
+      <div className="sticky-mission-inner">
+        <div className="sticky-mission-shell">
+          <div className="sticky-mission-side">
+            <div className="deadline-ring" aria-hidden="true">
+              <svg viewBox="0 0 52 52" className="deadline-ring-svg">
+                <circle className="deadline-ring-track" cx="26" cy="26" r={RING_RADIUS} />
+                <circle
+                  className="deadline-ring-progress"
+                  cx="26"
+                  cy="26"
+                  r={RING_RADIUS}
+                  strokeDasharray={RING_CIRCUMFERENCE}
+                  strokeDashoffset={ringOffset}
+                />
+              </svg>
+              <div className="deadline-ring-center">{Math.round(progressRatio * 100)}%</div>
             </div>
-          ))}
-        </div>
 
-        <div className="sticky-mission-side sticky-mission-side-end">
-          <div className="sticky-mission-copy">
-            <div className="sticky-mission-label">Current time</div>
-            <div className="sticky-mission-value">{formatDayTime(state.currentMinutes)}</div>
+            <div className="sticky-mission-copy">
+              <div className="sticky-mission-label">Time remaining</div>
+              <div className="sticky-mission-value">{formatDuration(timeRemaining)}</div>
+            </div>
+          </div>
+
+          <div className="sticky-score-strip" aria-label="Current cumulative trust scores">
+            {KNOWN_STAKEHOLDERS.map((stakeholder) => (
+              <div className="sticky-score-pill" key={stakeholder}>
+                <span className="sticky-score-name">{getStakeholderLabel(stakeholder)}</span>
+                <strong className="sticky-score-value">{state.trust[stakeholder]}</strong>
+              </div>
+            ))}
+          </div>
+
+          <div className="sticky-mission-side sticky-mission-side-end">
+            <div className="sticky-mission-copy">
+              <div className="sticky-mission-label">Current time</div>
+              <div className="sticky-mission-value">{formatDayTime(state.currentMinutes)}</div>
+            </div>
           </div>
         </div>
       </div>
