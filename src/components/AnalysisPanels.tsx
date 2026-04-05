@@ -17,51 +17,9 @@ export function AnalysisPanels({ state, logLimit }: AnalysisPanelsProps) {
       {lastEvaluation ? (
         <>
           <div className="section-divider" />
-          <h3 className="section-title">Last Reply Evaluation</h3>
+          <h3 className="section-title">Last Reply Impact</h3>
           <div className="small-caption">
             {`${lastEvaluation.response_label} • ${lastEvaluation.reply_type} for "${lastEvaluation.subject}"`}
-          </div>
-
-          {lastEvaluation.rubric_detail.warnings.length > 0 ? (
-            <div className="callout info">
-              {lastEvaluation.rubric_detail.warnings.join(" ")}
-            </div>
-          ) : null}
-
-          <div className="table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Rubric dimension</th>
-                  <th>Score</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Object.entries(lastEvaluation.rubric_scores).map(([dimension, score]) => (
-                  <tr key={dimension}>
-                    <td>{dimension}</td>
-                    <td>{score}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="section-divider" />
-          <h4 className="section-title">Why trust changed</h4>
-          <div className="outcome-list">
-            {Object.entries(lastEvaluation.rubric_detail.dimensions).map(([dimension, detail]) => (
-              <p key={dimension}>
-                <strong>{dimension}</strong>
-                {`: score ${detail.score}. `}
-                {detail.positiveTriggers.length > 0
-                  ? `Positive triggers: ${detail.positiveTriggers.join(", ")}. `
-                  : "No positive triggers found. "}
-                {detail.negativeTriggers.length > 0
-                  ? `Negative triggers: ${detail.negativeTriggers.join(", ")}.`
-                  : "No negative triggers found."}
-              </p>
-            ))}
           </div>
 
           <div className="section-divider" />

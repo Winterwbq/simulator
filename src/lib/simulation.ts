@@ -21,9 +21,8 @@ import type {
   QuickFilter,
   ReplyEvaluationEntry,
   ReplyType,
-  RubricDetail,
-  RubricScores,
   SimulationState,
+  StakeholderDeltas,
   Story,
   TrustScores,
 } from "./types";
@@ -113,6 +112,16 @@ function isTrustScores(value: unknown): value is TrustScores {
   return KNOWN_STAKEHOLDERS.every((stakeholder) => typeof (value as TrustScores)[stakeholder] === "number");
 }
 
+function isStakeholderDeltas(value: unknown): value is StakeholderDeltas {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  return KNOWN_STAKEHOLDERS.every(
+    (stakeholder) => typeof (value as StakeholderDeltas)[stakeholder] === "number",
+  );
+}
+
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
@@ -131,6 +140,24 @@ function isDraftComposerMap(value: unknown): value is Record<string, DraftCompos
     typeof value === "object" &&
     value !== null &&
     Object.values(value).every((entry) => isDraftComposerState(entry))
+  );
+}
+
+function isReplyEvaluationEntry(value: unknown): value is ReplyEvaluationEntry {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  const entry = value as Partial<ReplyEvaluationEntry>;
+  return (
+    typeof entry.step_index === "number" &&
+    typeof entry.message_id === "string" &&
+    typeof entry.subject === "string" &&
+    typeof entry.reply_source === "string" &&
+    typeof entry.response_label === "string" &&
+    typeof entry.reply_text === "string" &&
+    typeof entry.reply_type === "string" &&
+    isStakeholderDeltas(entry.trust_deltas)
   );
 }
 
@@ -177,9 +204,9 @@ export function loadSimulationState(story: Story): SimulationState {
         typeof parsed.showStartPrompt === "boolean" ? parsed.showStartPrompt : false,
       draftReplies: isDraftComposerMap(parsed.draftReplies) ? parsed.draftReplies : fallback.draftReplies,
       lastEvaluation:
-        parsed.lastEvaluation && typeof parsed.lastEvaluation === "object"
-          ? (parsed.lastEvaluation as DraftPlayLogEntry)
-          : parsed.lastDraftEvaluation && typeof parsed.lastDraftEvaluation === "object"
+        isReplyEvaluationEntry(parsed.lastEvaluation)
+          ? parsed.lastEvaluation
+          : isReplyEvaluationEntry(parsed.lastDraftEvaluation)
             ? parsed.lastDraftEvaluation
             : fallback.lastEvaluation,
       replyEvaluationError:
@@ -266,245 +293,11 @@ export function applyChoice(
     replyText: buildPresetReplyText(message, choice),
     replyType: inferReplyTypeForMessage(message),
     trustDeltas: gradedResult.trust_deltas,
-    rubricDetail: gradedResult.rubric_detail,
-    rubricScores: gradedResult.rubric_scores,
     unlockedCandidateIds: choice.next,
     logLine: choice.log.trim()
       ? `You chose the preset reply: ${choice.log.trim()}.`
       : `You chose the preset reply "${choice.label}".`,
   });
-}
-
-type CuePattern = {
-  label: string;
-  pattern: RegExp;
-};
-
-const POSITIVE_CUES: Record<keyof RubricScores, CuePattern[]> = {
-  Transparency: [
-    { label: "uncertainty", pattern: /\buncertain(?:ty)?\b/ },
-    { label: "limits", pattern: /\blimit(?:s|ation|ations)?\b/ },
-    { label: "investigating", pattern: /\binvestigat(?:e|es|ed|ing|ion)\b/ },
-    { label: "reviewing", pattern: /\breview(?:ing|ed)?\b/ },
-    { label: "assessing", pattern: /\bassess(?:ing|ment)?\b/ },
-    { label: "preliminary", pattern: /\bpreliminary\b/ },
-    { label: "what we know / do not know", pattern: /\b(do not know|don't know|what we know|what we do not know)\b/ },
-    { label: "updating as we learn more", pattern: /\b(update|updates|updated)\b.*\b(as|when)\b.*\b(learn|know|confirm)\b/ },
-    { label: "share more information", pattern: /\bshare\b.*\b(data|information|updates?)\b/ },
-  ],
-  Verification: [
-    { label: "independent review", pattern: /\b(independent|outside|external)\s+(review|audit)\b/ },
-    { label: "testing", pattern: /\b(test|tests|testing|retest|retesting)\b/ },
-    { label: "audit", pattern: /\baudit(?:ed|ing)?\b/ },
-    { label: "data", pattern: /\bdata\b/ },
-    { label: "evidence", pattern: /\bevidence\b/ },
-    { label: "verification", pattern: /\bverif(?:y|ied|ication|ying)\b/ },
-    { label: "documentation", pattern: /\bdocumentation|documented|documenting\b/ },
-  ],
-  Engagement: [
-    { label: "acknowledges concerns", pattern: /\b(concern|concerns|worried|worry|question|questions)\b/ },
-    { label: "invites questions", pattern: /\b(invite|welcome|take|answer)\b.*\b(question|questions)\b/ },
-    { label: "meeting", pattern: /\b(meeting|meet|briefing|forum)\b/ },
-    { label: "town hall", pattern: /\btown hall\b/ },
-    { label: "listening", pattern: /\b(listen|listening|hear|hearing)\b/ },
-    { label: "community", pattern: /\b(community|neighbor|neighbors|resident|residents)\b/ },
-    { label: "follow-up", pattern: /\bfollow[\s-]?up\b/ },
-  ],
-  Compliance: [
-    { label: "regulator", pattern: /\bregulator|regulators|regulatory\b/ },
-    { label: "reporting", pattern: /\breport(?:ing|ed)?\b/ },
-    { label: "safety process", pattern: /\bsafety\s+(process|review|protocol)\b/ },
-    { label: "documentation", pattern: /\bdocument(?:ation|ed|ing)\b/ },
-    { label: "filing", pattern: /\bfil(?:e|ing|ed)\b/ },
-    { label: "permit", pattern: /\bpermit|permitting\b/ },
-    { label: "compliance", pattern: /\bcompliance\b/ },
-    { label: "oversight", pattern: /\boversight\b/ },
-  ],
-  Tone: [
-    { label: "thank you", pattern: /\bthank you\b/ },
-    { label: "appreciate", pattern: /\bappreciat(?:e|es|ed|ing)\b/ },
-    { label: "respectfully", pattern: /\brespect(?:ful|fully)?\b/ },
-    { label: "understand", pattern: /\bunders?tand|recognize\b/ },
-    { label: "committed", pattern: /\bcommitt(?:ed|ing|ment)\b/ },
-    { label: "we hear", pattern: /\bwe hear\b/ },
-  ],
-};
-
-const NEGATIVE_CUES: Record<keyof RubricScores, CuePattern[]> = {
-  Transparency: [
-    { label: "guarantee", pattern: /\bguarante(?:e|ed|es)\b/ },
-    { label: "no risk", pattern: /\b(no|zero)\s+risk\b/ },
-    { label: "nothing to see", pattern: /\bnothing to see\b/ },
-    { label: "nothing to worry about", pattern: /\bnothing to worry about\b/ },
-    { label: "fully solved", pattern: /\bfully solved\b/ },
-  ],
-  Verification: [
-    { label: "trust us", pattern: /\btrust us\b/ },
-    { label: "no need to review", pattern: /\bno need to review\b/ },
-    { label: "already proven", pattern: /\balready proven\b/ },
-  ],
-  Engagement: [
-    { label: "stop asking", pattern: /\bstop asking\b/ },
-    { label: "nothing to discuss", pattern: /\bnothing to discuss\b/ },
-    { label: "not your concern", pattern: /\bnot your concern\b/ },
-  ],
-  Compliance: [
-    { label: "skip reporting", pattern: /\bskip reporting\b/ },
-    { label: "avoid the regulator", pattern: /\bavoid the regulator\b/ },
-    { label: "off the record", pattern: /\boff the record\b/ },
-  ],
-  Tone: [
-    { label: "fake news", pattern: /\bfake news\b/ },
-    { label: "you people", pattern: /\byou people\b/ },
-    { label: "overreacting", pattern: /\boverreact(?:ing)?\b/ },
-    { label: "calm down", pattern: /\bcalm down\b/ },
-    { label: "ridiculous", pattern: /\bridiculous\b/ },
-    { label: "hysteria", pattern: /\bhysteria\b/ },
-  ],
-};
-
-const PENALTY_KEYWORDS = {
-  overconfidentClaims: [
-    "guarantee",
-    "guaranteed",
-    "no risk",
-    "zero risk",
-    "perfectly safe",
-    "nothing to worry about",
-    "fully solved",
-  ],
-  dismissiveTone: ["you people", "overreacting", "calm down", "nothing to see", "stop asking"],
-  noCommentStonewalling: ["no comment", "cannot comment", "won't comment", "will not comment"],
-  inconsistencyCues: ["ignore rumors", "stick to the narrative", "do not mention", "say nothing", "routine issue"],
-  delayCues: ["delay", "delayed", "postpone", "postponed", "slip", "slipped", "pause", "reschedule"],
-};
-
-function collectMatches(text: string, phrases: string[]): string[] {
-  return phrases.filter((phrase) => text.includes(phrase));
-}
-
-function normalizeForMatching(text: string): string {
-  return ` ${text
-    .toLowerCase()
-    .replace(/[\u2018\u2019]/g, "'")
-    .replace(/[^a-z0-9'\s-]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()} `;
-}
-
-function collectCueMatches(text: string, cues: CuePattern[]): string[] {
-  return cues.flatMap((cue) => (cue.pattern.test(text) ? [cue.label] : []));
-}
-
-function scoreDimension(positiveMatches: string[], negativeMatches: string[], neutralTone: boolean): number {
-  if (neutralTone) {
-    return negativeMatches.length > 0 ? 0 : 1;
-  }
-
-  const base = positiveMatches.length >= 2 ? 2 : positiveMatches.length === 1 ? 1 : 0;
-  return Math.max(0, Math.min(2, base - (negativeMatches.length > 0 ? 1 : 0)));
-}
-
-export function gradeReply(
-  text: string,
-  replyType: ReplyType,
-): [Partial<Record<KnownStakeholder, number>>, RubricDetail, RubricScores] {
-  const normalized = normalizeForMatching(text.trim());
-  const tooShort = normalized.length <= 30;
-  const warnings = tooShort ? ["Reply too short to evaluate reliably."] : [];
-
-  const dimensions = {
-    Transparency: { score: 0, positiveTriggers: [] as string[], negativeTriggers: [] as string[] },
-    Verification: { score: 0, positiveTriggers: [] as string[], negativeTriggers: [] as string[] },
-    Engagement: { score: 0, positiveTriggers: [] as string[], negativeTriggers: [] as string[] },
-    Compliance: { score: 0, positiveTriggers: [] as string[], negativeTriggers: [] as string[] },
-    Tone: { score: 0, positiveTriggers: [] as string[], negativeTriggers: [] as string[] },
-  };
-
-  if (!tooShort) {
-    (Object.keys(dimensions) as (keyof RubricScores)[]).forEach((dimension) => {
-      const positiveMatches = collectCueMatches(normalized, POSITIVE_CUES[dimension]);
-      const negativeMatches = collectCueMatches(normalized, NEGATIVE_CUES[dimension]);
-      dimensions[dimension] = {
-        score:
-          dimension === "Tone"
-            ? scoreDimension(positiveMatches, negativeMatches, positiveMatches.length === 0)
-            : scoreDimension(positiveMatches, negativeMatches, false),
-        positiveTriggers: positiveMatches,
-        negativeTriggers: negativeMatches,
-      };
-    });
-  }
-
-  const overconfidentClaims = tooShort
-    ? 0
-    : Math.min(2, collectMatches(normalized, PENALTY_KEYWORDS.overconfidentClaims).length);
-  const dismissiveTone = tooShort
-    ? 0
-    : Math.min(2, collectMatches(normalized, PENALTY_KEYWORDS.dismissiveTone).length);
-  const noCommentStonewalling = tooShort
-    ? 0
-    : Math.min(2, collectMatches(normalized, PENALTY_KEYWORDS.noCommentStonewalling).length);
-  const inconsistencyCues = tooShort
-    ? 0
-    : Math.min(2, collectMatches(normalized, PENALTY_KEYWORDS.inconsistencyCues).length);
-  const transparencyImpliesDelay =
-    tooShort || dimensions.Transparency.score === 0
-      ? 0
-      : collectMatches(normalized, PENALTY_KEYWORDS.delayCues).length > 0 &&
-          replyType !== "Internal update"
-        ? 1
-        : 0;
-
-  const rubricScores: RubricScores = {
-    Transparency: dimensions.Transparency.score,
-    Verification: dimensions.Verification.score,
-    Engagement: dimensions.Engagement.score,
-    Compliance: dimensions.Compliance.score,
-    Tone: dimensions.Tone.score,
-  };
-
-  const deltas: Partial<Record<KnownStakeholder, number>> = {
-    regulator:
-      2 * rubricScores.Transparency +
-      2 * rubricScores.Compliance +
-      rubricScores.Verification -
-      2 * overconfidentClaims,
-    community:
-      2 * rubricScores.Engagement +
-      rubricScores.Transparency -
-      2 * dismissiveTone,
-    engineering:
-      2 * rubricScores.Verification +
-      rubricScores.Transparency -
-      overconfidentClaims,
-    media:
-      2 * rubricScores.Transparency +
-      rubricScores.Engagement -
-      2 * noCommentStonewalling -
-      2 * inconsistencyCues,
-    investor:
-      rubricScores.Verification - transparencyImpliesDelay,
-  };
-
-  (Object.keys(deltas) as KnownStakeholder[]).forEach((stakeholder) => {
-    deltas[stakeholder] = Math.max(-8, Math.min(8, deltas[stakeholder] ?? 0));
-  });
-
-  const rubricDetail: RubricDetail = {
-    tooShort,
-    warnings,
-    dimensions,
-    penalties: {
-      overconfidentClaims,
-      dismissiveTone,
-      noCommentStonewalling,
-      inconsistencyCues,
-      transparencyImpliesDelay,
-    },
-  };
-
-  return [deltas, rubricDetail, rubricScores];
 }
 
 function getDraftUnlockIds(story: Story, message: Message): string[] {
@@ -543,8 +336,6 @@ export function applyDraftedReply(
     replyText: draftedReplyText,
     replyType: composer.replyType,
     trustDeltas: gradedResult.trust_deltas,
-    rubricDetail: gradedResult.rubric_detail,
-    rubricScores: gradedResult.rubric_scores,
     unlockedCandidateIds: getDraftUnlockIds(story, message),
     logLine: `You drafted a ${composer.replyType.toLowerCase()} for "${message.subject}".`,
   });
@@ -865,9 +656,6 @@ export function summarizeStakeholderOutcome(
   }
 
   const strongest = contributors[0];
-  const signalNames = getStakeholderSignalSummary(strongest.entry, stakeholder);
-  const signalText =
-    signalNames.length > 0 ? ` Strongest rubric signals: ${signalNames.join(", ")}.` : "";
   const direction =
     totalDelta > 0
       ? `Net ${formatSignedNumber(totalDelta)}. The biggest lift came from "${strongest.entry.response_label}" on "${strongest.entry.subject}".`
@@ -875,7 +663,7 @@ export function summarizeStakeholderOutcome(
         ? `Net ${formatSignedNumber(totalDelta)}. The biggest drag came from "${strongest.entry.response_label}" on "${strongest.entry.subject}".`
         : `Net 0. The sharpest movement still came from "${strongest.entry.response_label}" on "${strongest.entry.subject}".`;
 
-  return `${direction}${signalText}`;
+  return direction;
 }
 
 export function getMessagePreview(body: string, length = 96): string {
@@ -916,9 +704,7 @@ function applyEvaluatedReply(
     responseLabel: string;
     replyText: string;
     replyType: ReplyType;
-    trustDeltas: Partial<Record<KnownStakeholder, number>>;
-    rubricDetail: RubricDetail;
-    rubricScores: RubricScores;
+    trustDeltas: StakeholderDeltas;
     unlockedCandidateIds: string[];
     logLine: string;
   },
@@ -951,9 +737,7 @@ function applyEvaluatedReply(
     response_label: input.responseLabel,
     reply_text: input.replyText,
     reply_type: input.replyType,
-    rubric_scores: input.rubricScores,
     trust_deltas: { ...input.trustDeltas },
-    rubric_detail: input.rubricDetail,
   };
 
   const trustHistory = [
@@ -965,9 +749,6 @@ function applyEvaluatedReply(
     },
   ];
   const logEntries = [...state.logEntries, input.logLine];
-  if (input.rubricDetail.warnings.length > 0) {
-    input.rubricDetail.warnings.forEach((warning) => logEntries.push(`Grading warning: ${warning}`));
-  }
   if (unlockedNow.length > 0) {
     const unlockedSubjects = unlockedNow.map((nextId) => story.messages[nextId].subject).join(", ");
     logEntries.push(`New emails unlocked: ${unlockedSubjects}.`);
@@ -1004,32 +785,4 @@ function applyEvaluatedReply(
 
 function formatSignedNumber(value: number): string {
   return value >= 0 ? `+${value}` : `${value}`;
-}
-
-function getStakeholderSignalSummary(
-  entry: ReplyEvaluationEntry,
-  stakeholder: KnownStakeholder,
-): string[] {
-  const positiveDimensions = Object.entries(entry.rubric_scores)
-    .filter(([, score]) => score > 0)
-    .map(([dimension]) => dimension.toLowerCase());
-  const penalties = entry.rubric_detail.penalties;
-  const stakeholderSpecificPenalties: Record<KnownStakeholder, string[]> = {
-    regulator: penalties.overconfidentClaims > 0 ? ["overconfidence penalty"] : [],
-    community: penalties.dismissiveTone > 0 ? ["dismissive tone penalty"] : [],
-    engineering: penalties.overconfidentClaims > 0 ? ["overconfidence penalty"] : [],
-    media:
-      penalties.noCommentStonewalling > 0 || penalties.inconsistencyCues > 0
-        ? [
-            penalties.noCommentStonewalling > 0 ? "stonewalling penalty" : "",
-            penalties.inconsistencyCues > 0 ? "inconsistency penalty" : "",
-          ].filter(Boolean)
-        : [],
-    investor: penalties.transparencyImpliesDelay > 0 ? ["delay signal penalty"] : [],
-  };
-
-  return Array.from(new Set([...positiveDimensions, ...stakeholderSpecificPenalties[stakeholder]])).slice(
-    0,
-    3,
-  );
 }

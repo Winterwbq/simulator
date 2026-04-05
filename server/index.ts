@@ -3,45 +3,31 @@ import express from "express";
 import { access } from "node:fs/promises";
 import path from "node:path";
 
-type RubricScores = {
-  Transparency: number;
-  Verification: number;
-  Engagement: number;
-  Compliance: number;
-  Tone: number;
+type StakeholderDeltas = {
+  regulator: number;
+  investor: number;
+  community: number;
+  engineering: number;
+  media: number;
 };
 
-type RubricDetailDimension = {
-  score: number;
-  positiveTriggers: string[];
-  negativeTriggers: string[];
-};
+type ImpactLevel =
+  | "strong_negative"
+  | "negative"
+  | "neutral"
+  | "positive"
+  | "strong_positive";
 
-type RubricPenaltyFlags = {
-  overconfidentClaims: number;
-  dismissiveTone: number;
-  noCommentStonewalling: number;
-  inconsistencyCues: number;
-  transparencyImpliesDelay: number;
-};
-
-type RubricDetail = {
-  tooShort: boolean;
-  warnings: string[];
-  dimensions: Record<keyof RubricScores, RubricDetailDimension>;
-  penalties: RubricPenaltyFlags;
+type StakeholderImpacts = {
+  regulator: ImpactLevel;
+  investor: ImpactLevel;
+  community: ImpactLevel;
+  engineering: ImpactLevel;
+  media: ImpactLevel;
 };
 
 type DraftGradeResult = {
-  rubric_scores: RubricScores;
-  trust_deltas: {
-    regulator: number;
-    investor: number;
-    community: number;
-    engineering: number;
-    media: number;
-  };
-  rubric_detail: RubricDetail;
+  trust_deltas: StakeholderDeltas;
 };
 
 type GradeReplyRequest = {
@@ -90,54 +76,35 @@ const gradingSchema = {
   type: "object",
   additionalProperties: false,
   properties: {
-    scores: {
+    trust_impacts: {
       type: "object",
       additionalProperties: false,
       properties: {
-        Transparency: { type: "integer", minimum: 0, maximum: 2 },
-        Verification: { type: "integer", minimum: 0, maximum: 2 },
-        Engagement: { type: "integer", minimum: 0, maximum: 2 },
-        Compliance: { type: "integer", minimum: 0, maximum: 2 },
-        Tone: { type: "integer", minimum: 0, maximum: 2 },
+        regulator: {
+          type: "string",
+          enum: ["strong_negative", "negative", "neutral", "positive", "strong_positive"],
+        },
+        investor: {
+          type: "string",
+          enum: ["strong_negative", "negative", "neutral", "positive", "strong_positive"],
+        },
+        community: {
+          type: "string",
+          enum: ["strong_negative", "negative", "neutral", "positive", "strong_positive"],
+        },
+        engineering: {
+          type: "string",
+          enum: ["strong_negative", "negative", "neutral", "positive", "strong_positive"],
+        },
+        media: {
+          type: "string",
+          enum: ["strong_negative", "negative", "neutral", "positive", "strong_positive"],
+        },
       },
-      required: ["Transparency", "Verification", "Engagement", "Compliance", "Tone"],
-    },
-    reasons: {
-      type: "object",
-      additionalProperties: false,
-      properties: {
-        Transparency: { type: "string" },
-        Verification: { type: "string" },
-        Engagement: { type: "string" },
-        Compliance: { type: "string" },
-        Tone: { type: "string" },
-      },
-      required: ["Transparency", "Verification", "Engagement", "Compliance", "Tone"],
-    },
-    warnings: {
-      type: "array",
-      items: { type: "string" },
-    },
-    penalties: {
-      type: "object",
-      additionalProperties: false,
-      properties: {
-        overconfidentClaims: { type: "integer", minimum: 0, maximum: 2 },
-        dismissiveTone: { type: "integer", minimum: 0, maximum: 2 },
-        noCommentStonewalling: { type: "integer", minimum: 0, maximum: 2 },
-        inconsistencyCues: { type: "integer", minimum: 0, maximum: 2 },
-        transparencyImpliesDelay: { type: "integer", minimum: 0, maximum: 1 },
-      },
-      required: [
-        "overconfidentClaims",
-        "dismissiveTone",
-        "noCommentStonewalling",
-        "inconsistencyCues",
-        "transparencyImpliesDelay",
-      ],
+      required: ["regulator", "investor", "community", "engineering", "media"],
     },
   },
-  required: ["scores", "reasons", "warnings", "penalties"],
+  required: ["trust_impacts"],
 } as const;
 
 app.use(express.json({ limit: "1mb" }));
@@ -194,7 +161,8 @@ async function getDraftGradingHealth() {
     statusMessage = "Local llama.cpp reply grader is ready on this machine.";
   } else if (!modelExists) {
     status = "model_missing";
-    statusMessage = "The local GGUF model is missing. Run `npm run dev` and wait for the model download to finish.";
+    statusMessage =
+      "The local GGUF model is missing. Run `npm run dev` and wait for the model download to finish.";
   } else if (!serverBinaryExists) {
     status = "binary_missing";
     statusMessage = "The local llama-server binary is missing. Run `npm run dev` to build the local grader.";
@@ -218,37 +186,37 @@ async function getDraftGradingHealth() {
 function buildGradingPrompt(requestBody: Required<GradeReplyRequest>) {
   return [
     "You are grading a player-written reply inside a governance and crisis-communications simulator.",
-    "Return exactly one JSON object that matches the provided schema.",
-    "Keep the JSON easy to follow.",
-    "Use exactly four top-level keys: `scores`, `reasons`, `warnings`, and `penalties`.",
-    "Under `reasons`, write one short sentence for each rubric dimension.",
-    "Do not include chain-of-thought, analysis text, think tags, channel markers, markdown fences, or prose before or after the JSON object.",
-    "Score each rubric dimension from 0 to 2 using only the provided reply text.",
-    "Be transparent and explainable: every score should be grounded in phrases from the draft.",
-    "If the reply is weak, vague, too short, overconfident, dismissive, or evasive, score conservatively.",
-    "Do not add extra keys.",
+    "Return exactly one JSON object matching the schema.",
+    "Do not include chain-of-thought, analysis text, think tags, markdown fences, or prose before or after the JSON.",
+    "Use exactly one top-level key: `trust_impacts`.",
+    "Inside `trust_impacts`, return one label for regulator, investor, community, engineering, and media.",
+    "Allowed labels are: `strong_negative`, `negative`, `neutral`, `positive`, `strong_positive`.",
+    "The server will map these labels to final trust deltas of -10, -5, 0, +5, and +10.",
+    "Score only from the provided reply text and current email context.",
+    "Be conservative. Weak, vague, evasive, or overly polished replies should not receive generous positive scores.",
     "If `source` is `preset`, the reply text is a concise canonical summary of the preset action. Grade that summary directly without inventing missing details.",
     "",
-    "Rubric dimensions:",
-    "- Transparency: mentions uncertainty, limits, ongoing investigation, or what is not yet known.",
-    "- Verification: mentions testing, retesting, audit, data, evidence, independent review, or validation.",
-    "- Engagement: acknowledges concerns and invites questions, meetings, follow-up, or community dialogue.",
-    "- Compliance: mentions reporting, documentation, safety process, oversight, or regulators.",
-    "- Tone: respectful, non-hostile, non-dismissive language.",
+    "Stakeholder guidance:",
+    "- regulator: rewards transparency, credible governance, and responsible disclosure; penalizes evasiveness or overconfidence.",
+    "- investor: rewards disciplined execution and credible communication; penalizes signals of disorder or unmanaged delay.",
+    "- community: rewards visible engagement, respect, and responsiveness to local concerns.",
+    "- engineering: rewards technical honesty, evidence-seeking, and respect for real uncertainty.",
+    "- media: rewards timely, consistent, accountable communication and penalizes stonewalling or spin.",
     "",
-    "Penalty cues:",
-    "- overconfidentClaims: guarantees, zero-risk framing, or claims that everything is fully solved.",
-    "- dismissiveTone: belittling, insulting, or brushing off stakeholders.",
-    "- noCommentStonewalling: refuses to engage with the issue.",
-    "- inconsistencyCues: signals spin, concealment, or mismatch with credible process.",
-    "- transparencyImpliesDelay: explicitly suggests delay or postponement and may reduce investor confidence.",
-    "",
-    "Trust delta formulas:",
-    "- regulator = 2*Transparency + 2*Compliance + 1*Verification - 2*overconfidentClaims",
-    "- community = 2*Engagement + 1*Transparency - 2*dismissiveTone",
-    "- engineering = 2*Verification + 1*Transparency - 1*overconfidentClaims",
-    "- media = 2*Transparency + 1*Engagement - 2*noCommentStonewalling - 2*inconsistencyCues",
-    "- investor = 1*Verification - 1*transparencyImpliesDelay",
+    "Example shape:",
+    JSON.stringify(
+      {
+        trust_impacts: {
+          regulator: "positive",
+          investor: "neutral",
+          community: "strong_positive",
+          engineering: "positive",
+          media: "negative",
+        },
+      },
+      null,
+      2,
+    ),
     "",
     "Scenario:",
     JSON.stringify(
@@ -357,208 +325,67 @@ function extractJsonObject(text: string): string {
   throw new Error("The local model returned an invalid JSON grading payload.");
 }
 
-function clampScore(value: unknown): number {
-  const numericValue = typeof value === "number" ? value : Number(value ?? 0);
-  if (!Number.isFinite(numericValue)) {
-    return 0;
-  }
-  return Math.max(0, Math.min(2, Math.round(numericValue)));
-}
-
-function clampPenalty(value: unknown, maxValue = 2): number {
-  const numericValue = typeof value === "number" ? value : Number(value ?? 0);
-  if (!Number.isFinite(numericValue)) {
-    return 0;
-  }
-  return Math.max(0, Math.min(maxValue, Math.round(numericValue)));
-}
-
-function clampTrustDelta(value: number): number {
-  return Math.max(-8, Math.min(8, Math.round(value)));
-}
-
-function buildPenaltyFlags(rawPenalties: Record<string, unknown> | undefined, sourceText: string): RubricPenaltyFlags {
-  const lower = sourceText.toLowerCase();
-
-  return {
-    overconfidentClaims:
-      clampPenalty(rawPenalties?.overconfidentClaims) ||
-      (/\b(guarantee|zero risk|no risk|fully solved|nothing to worry about)\b/.test(lower) ? 1 : 0),
-    dismissiveTone:
-      clampPenalty(rawPenalties?.dismissiveTone) ||
-      (/\b(fake news|you people|calm down|overreacting|ridiculous|hysteria)\b/.test(lower) ? 1 : 0),
-    noCommentStonewalling:
-      clampPenalty(rawPenalties?.noCommentStonewalling) ||
-      (/\b(no comment|cannot comment|nothing to say)\b/.test(lower) ? 1 : 0),
-    inconsistencyCues:
-      clampPenalty(rawPenalties?.inconsistencyCues) ||
-      (/\b(off the record|ignore this|nothing to see)\b/.test(lower) ? 1 : 0),
-    transparencyImpliesDelay:
-      clampPenalty(rawPenalties?.transparencyImpliesDelay, 1) ||
-      (/\b(delay|postpone|push back|defer)\b/.test(lower) ? 1 : 0),
-  };
-}
-
-function normalizeRubricScores(raw: Record<string, unknown>): RubricScores {
-  const directScores = raw.scores as Record<string, unknown> | undefined;
-  const rubricScores = raw.rubric_scores as Record<string, unknown> | undefined;
-  const rawDimensions = raw.dimensions as Record<string, unknown> | undefined;
-  const legacyScores = raw.scores as Record<string, unknown> | undefined;
-
-  if (rubricScores || directScores) {
-    const source = rubricScores ?? directScores ?? {};
-    return {
-      Transparency: clampScore(source.Transparency),
-      Verification: clampScore(source.Verification),
-      Engagement: clampScore(source.Engagement),
-      Compliance: clampScore(source.Compliance),
-      Tone: clampScore(source.Tone),
-    };
+function normalizeImpactLevel(value: unknown): ImpactLevel {
+  if (
+    value === "strong_negative" ||
+    value === "negative" ||
+    value === "neutral" ||
+    value === "positive" ||
+    value === "strong_positive"
+  ) {
+    return value;
   }
 
-  if (rawDimensions) {
-    return {
-      Transparency: clampScore(rawDimensions.Transparency),
-      Verification: clampScore(rawDimensions.Verification),
-      Engagement: clampScore(rawDimensions.Engagement),
-      Compliance: clampScore(rawDimensions.Compliance),
-      Tone: clampScore(rawDimensions.Tone),
-    };
+  return "neutral";
+}
+
+function mapImpactLevelToDelta(level: ImpactLevel): number {
+  if (level === "strong_negative") {
+    return -10;
   }
+  if (level === "negative") {
+    return -5;
+  }
+  if (level === "positive") {
+    return 5;
+  }
+  if (level === "strong_positive") {
+    return 10;
+  }
+  return 0;
+}
+
+function normalizeTrustImpacts(raw: Record<string, unknown>): StakeholderImpacts {
+  const source =
+    raw.trust_impacts && typeof raw.trust_impacts === "object"
+      ? (raw.trust_impacts as Record<string, unknown>)
+      : raw;
 
   return {
-    Transparency: clampScore(legacyScores?.clarity_and_completeness),
-    Verification: clampScore(legacyScores?.relevance_and_substance),
-    Engagement: clampScore(legacyScores?.relevance_and_substance),
-    Compliance: clampScore(legacyScores?.clarity_and_completeness),
-    Tone: clampScore(legacyScores?.tone_and_professionalism),
+    regulator: normalizeImpactLevel(source.regulator),
+    investor: normalizeImpactLevel(source.investor),
+    community: normalizeImpactLevel(source.community),
+    engineering: normalizeImpactLevel(source.engineering),
+    media: normalizeImpactLevel(source.media),
   };
 }
 
-function normalizeRubricDetail(
-  raw: Record<string, unknown>,
-  rubricScores: RubricScores,
-  replyText: string,
-): RubricDetail {
-  const rawDetail = (raw.detail ?? raw.rubric_detail ?? raw) as Record<string, unknown>;
-  const rawDimensions = rawDetail.dimensions as Record<string, unknown> | undefined;
-  const rawReasons = (raw.reasons ?? raw.reasoning ?? raw.detail) as Record<string, unknown> | string | undefined;
-  const rawJustifications = raw.justifications as Record<string, unknown> | undefined;
-  const warningsSource = Array.isArray(raw.warnings)
-    ? raw.warnings
-    : Array.isArray(rawDetail.warnings)
-      ? rawDetail.warnings
-      : [];
-  const warnings = warningsSource.filter((item): item is string => typeof item === "string");
-
-  const getReasonText = (name: keyof RubricScores, legacyKey?: string): string[] => {
-    if (rawReasons && typeof rawReasons === "object" && typeof rawReasons[name] === "string") {
-      return [String(rawReasons[name])];
-    }
-
-    if (typeof rawReasons === "string") {
-      return [rawReasons];
-    }
-
-    if (typeof rawJustifications?.[legacyKey ?? name] === "string") {
-      return [String(rawJustifications[legacyKey ?? name])];
-    }
-
-    return [];
-  };
-
-  const buildDimension = (name: keyof RubricScores, legacyKey?: string): RubricDetailDimension => {
-    const value = rawDimensions?.[name];
-    if (value && typeof value === "object") {
-      const objectValue = value as Record<string, unknown>;
-      return {
-        score: clampScore(objectValue.score ?? rubricScores[name]),
-        positiveTriggers: Array.isArray(objectValue.positiveTriggers)
-          ? objectValue.positiveTriggers.filter((item): item is string => typeof item === "string")
-          : [],
-        negativeTriggers: Array.isArray(objectValue.negativeTriggers)
-          ? objectValue.negativeTriggers.filter((item): item is string => typeof item === "string")
-          : [],
-      };
-    }
-
-    const notes = getReasonText(name, legacyKey);
-    const positiveTriggers = rubricScores[name] > 0 ? notes : [];
-    const negativeTriggers = rubricScores[name] === 0 ? notes : [];
-
-    return {
-      score: clampScore(value ?? rubricScores[name]),
-      positiveTriggers,
-      negativeTriggers,
-    };
-  };
+function normalizeTrustDeltas(raw: Record<string, unknown>): StakeholderDeltas {
+  const impacts = normalizeTrustImpacts(raw);
 
   return {
-    tooShort:
-      typeof rawDetail.tooShort === "boolean"
-        ? rawDetail.tooShort
-        : replyText.trim().length < 30,
-    warnings,
-    dimensions: {
-      Transparency: buildDimension("Transparency", "clarity_and_completeness"),
-      Verification: buildDimension("Verification", "relevance_and_substance"),
-      Engagement: buildDimension("Engagement", "relevance_and_substance"),
-      Compliance: buildDimension("Compliance", "clarity_and_completeness"),
-      Tone: buildDimension("Tone", "tone_and_professionalism"),
-    },
-    penalties: buildPenaltyFlags(
-      ((raw.penalties && typeof raw.penalties === "object"
-        ? raw.penalties
-        : rawDetail.penalties && typeof rawDetail.penalties === "object"
-          ? rawDetail.penalties
-          : undefined) as Record<string, unknown> | undefined),
-      `${replyText} ${warnings.join(" ")} ${JSON.stringify(rawJustifications ?? {})}`,
-    ),
+    regulator: mapImpactLevelToDelta(impacts.regulator),
+    investor: mapImpactLevelToDelta(impacts.investor),
+    community: mapImpactLevelToDelta(impacts.community),
+    engineering: mapImpactLevelToDelta(impacts.engineering),
+    media: mapImpactLevelToDelta(impacts.media),
   };
 }
 
-function computeTrustDeltas(rubricScores: RubricScores, rubricDetail: RubricDetail): DraftGradeResult["trust_deltas"] {
-  const penalties = rubricDetail.penalties;
-
-  return {
-    regulator: clampTrustDelta(
-      2 * rubricScores.Transparency +
-        2 * rubricScores.Compliance +
-        rubricScores.Verification -
-        2 * penalties.overconfidentClaims,
-    ),
-    community: clampTrustDelta(
-      2 * rubricScores.Engagement +
-        rubricScores.Transparency -
-        2 * penalties.dismissiveTone,
-    ),
-    engineering: clampTrustDelta(
-      2 * rubricScores.Verification +
-        rubricScores.Transparency -
-        penalties.overconfidentClaims,
-    ),
-    media: clampTrustDelta(
-      2 * rubricScores.Transparency +
-        rubricScores.Engagement -
-        2 * penalties.noCommentStonewalling -
-        2 * penalties.inconsistencyCues,
-    ),
-    investor: clampTrustDelta(
-      rubricScores.Verification - penalties.transparencyImpliesDelay,
-    ),
-  };
-}
-
-function normalizeGradePayload(rawPayload: string, replyText: string): DraftGradeResult {
+function normalizeGradePayload(rawPayload: string): DraftGradeResult {
   const parsed = JSON.parse(extractJsonObject(rawPayload)) as Record<string, unknown>;
-  const rubric_scores = normalizeRubricScores(parsed);
-  const rubric_detail = normalizeRubricDetail(parsed, rubric_scores, replyText);
-  const trust_deltas = computeTrustDeltas(rubric_scores, rubric_detail);
-
   return {
-    rubric_scores,
-    rubric_detail,
-    trust_deltas,
+    trust_deltas: normalizeTrustDeltas(parsed),
   };
 }
 
@@ -602,7 +429,7 @@ async function handleGradeReply(request: express.Request, response: express.Resp
       body: JSON.stringify({
         model: llamaModel,
         temperature: 0,
-        max_tokens: 350,
+        max_tokens: 220,
         stream: false,
         reasoning_format: "none",
         chat_template_kwargs: {
@@ -644,7 +471,7 @@ async function handleGradeReply(request: express.Request, response: express.Resp
     }
 
     const content = getLlamaMessageText(payload.choices?.[0]?.message);
-    response.json(normalizeGradePayload(content, replyText));
+    response.json(normalizeGradePayload(content));
   } catch (error) {
     const messageText =
       error instanceof Error ? error.message : "Unknown local llama grading error.";

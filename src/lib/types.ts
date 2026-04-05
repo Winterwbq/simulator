@@ -16,12 +16,7 @@ export type ReplyType =
   | "Email to community"
   | "Internal update";
 export type ReplySource = "preset" | "draft";
-export type RubricDimension =
-  | "Transparency"
-  | "Verification"
-  | "Engagement"
-  | "Compliance"
-  | "Tone";
+export type StakeholderDeltas = Record<KnownStakeholder, number>;
 
 export interface Choice {
   label: string;
@@ -80,39 +75,8 @@ export interface DraftComposerState {
   replyType: ReplyType;
 }
 
-export interface RubricScores {
-  Transparency: number;
-  Verification: number;
-  Engagement: number;
-  Compliance: number;
-  Tone: number;
-}
-
-export interface RubricDetailDimension {
-  score: number;
-  positiveTriggers: string[];
-  negativeTriggers: string[];
-}
-
-export interface RubricPenaltyFlags {
-  overconfidentClaims: number;
-  dismissiveTone: number;
-  noCommentStonewalling: number;
-  inconsistencyCues: number;
-  transparencyImpliesDelay: number;
-}
-
-export interface RubricDetail {
-  tooShort: boolean;
-  warnings: string[];
-  dimensions: Record<RubricDimension, RubricDetailDimension>;
-  penalties: RubricPenaltyFlags;
-}
-
 export interface DraftGradeResult {
-  rubric_scores: RubricScores;
-  trust_deltas: Partial<Record<KnownStakeholder, number>>;
-  rubric_detail: RubricDetail;
+  trust_deltas: StakeholderDeltas;
 }
 
 export interface ReplyEvaluationEntry extends DraftGradeResult {

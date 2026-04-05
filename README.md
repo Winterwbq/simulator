@@ -43,8 +43,10 @@ On the first run, the model download is large and the local server build can tak
 ## Notes
 
 - The local inference path uses the documented Apple Silicon `Metal` backend from `llama.cpp`, which is the supported local acceleration path in this setup.
-- The default local grading model is `Qwen3.5-4B-Q4_0.gguf`, because it follows the simulator's structured grading format more reliably in this setup than the previous Gemma default.
-- The frontend still uses preset choices exactly as before; only drafted replies are graded by the local model.
+- The default local grading model is `Qwen3.5-4B-Q4_0.gguf`.
+- The local grader now returns stakeholder trust deltas directly for `regulator`, `investor`, `community`, `engineering`, and `media`.
+- Trust changes from evaluated replies are quantized to fixed 5-point steps: `-10`, `-5`, `0`, `+5`, or `+10`.
+- Both preset replies and drafted replies use the same local grading path.
 
 ## Verify
 
