@@ -1,5 +1,5 @@
 import { KNOWN_STAKEHOLDERS } from "../lib/types";
-import { explainStakeholderOutcome, formatEffects, getTotalDeltas } from "../lib/simulation";
+import { formatEffects, getTotalDeltas, summarizeStakeholderOutcome } from "../lib/simulation";
 import type { SimulationState } from "../lib/types";
 
 interface AnalysisPanelsProps {
@@ -10,19 +10,21 @@ interface AnalysisPanelsProps {
 export function AnalysisPanels({ state, logLimit }: AnalysisPanelsProps) {
   const totals = getTotalDeltas(state);
   const entries = typeof logLimit === "number" ? state.logEntries.slice(-logLimit) : state.logEntries;
-  const lastDraftEvaluation = state.lastDraftEvaluation;
+  const lastEvaluation = state.lastEvaluation;
 
   return (
     <>
-      {lastDraftEvaluation ? (
+      {lastEvaluation ? (
         <>
           <div className="section-divider" />
-          <h3 className="section-title">Last Drafted Reply Evaluation</h3>
-          <div className="small-caption">{`${lastDraftEvaluation.reply_type} for "${lastDraftEvaluation.subject}"`}</div>
+          <h3 className="section-title">Last Reply Evaluation</h3>
+          <div className="small-caption">
+            {`${lastEvaluation.response_label} • ${lastEvaluation.reply_type} for "${lastEvaluation.subject}"`}
+          </div>
 
-          {lastDraftEvaluation.rubric_detail.warnings.length > 0 ? (
+          {lastEvaluation.rubric_detail.warnings.length > 0 ? (
             <div className="callout info">
-              {lastDraftEvaluation.rubric_detail.warnings.join(" ")}
+              {lastEvaluation.rubric_detail.warnings.join(" ")}
             </div>
           ) : null}
 
@@ -35,7 +37,7 @@ export function AnalysisPanels({ state, logLimit }: AnalysisPanelsProps) {
                 </tr>
               </thead>
               <tbody>
-                {Object.entries(lastDraftEvaluation.rubric_scores).map(([dimension, score]) => (
+                {Object.entries(lastEvaluation.rubric_scores).map(([dimension, score]) => (
                   <tr key={dimension}>
                     <td>{dimension}</td>
                     <td>{score}</td>
@@ -48,7 +50,7 @@ export function AnalysisPanels({ state, logLimit }: AnalysisPanelsProps) {
           <div className="section-divider" />
           <h4 className="section-title">Why trust changed</h4>
           <div className="outcome-list">
-            {Object.entries(lastDraftEvaluation.rubric_detail.dimensions).map(([dimension, detail]) => (
+            {Object.entries(lastEvaluation.rubric_detail.dimensions).map(([dimension, detail]) => (
               <p key={dimension}>
                 <strong>{dimension}</strong>
                 {`: score ${detail.score}. `}
@@ -64,7 +66,7 @@ export function AnalysisPanels({ state, logLimit }: AnalysisPanelsProps) {
 
           <div className="section-divider" />
           <h4 className="section-title">Trust delta summary</h4>
-          <div className="callout neutral">{formatEffects(lastDraftEvaluation.trust_deltas)}</div>
+          <div className="callout neutral">{formatEffects(lastEvaluation.trust_deltas)}</div>
         </>
       ) : null}
 
@@ -95,8 +97,8 @@ export function AnalysisPanels({ state, logLimit }: AnalysisPanelsProps) {
                   <tr key={entry.step_index}>
                     <td>{entry.step_index}</td>
                     <td>{entry.subject || entry.message_id}</td>
-                    <td>{entry.choice_label}</td>
-                    <td>{formatEffects(entry.effects)}</td>
+                    <td>{entry.response_label}</td>
+                    <td>{formatEffects(entry.trust_deltas)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -133,7 +135,7 @@ export function AnalysisPanels({ state, logLimit }: AnalysisPanelsProps) {
         {KNOWN_STAKEHOLDERS.map((stakeholder) => (
           <p key={stakeholder}>
             <strong>{stakeholder.charAt(0).toUpperCase() + stakeholder.slice(1)}</strong>
-            {`: ${explainStakeholderOutcome(stakeholder, totals[stakeholder])}`}
+            {`: ${summarizeStakeholderOutcome(state, stakeholder)}`}
           </p>
         ))}
       </div>

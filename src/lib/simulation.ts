@@ -7,7 +7,6 @@ import {
   DECISION_TIME_INCREMENT,
   DEFAULT_TIME_MINUTES,
   ENDING_PATTERN,
-  STAKEHOLDER_EFFECT_LABELS,
   STORAGE_KEY,
 } from "./constants";
 import { KNOWN_STAKEHOLDERS } from "./types";
@@ -20,6 +19,7 @@ import type {
   KnownStakeholder,
   Message,
   QuickFilter,
+  ReplyEvaluationEntry,
   ReplyType,
   RubricDetail,
   RubricScores,
@@ -100,9 +100,9 @@ export function initializeSimulation(story: Story): SimulationState {
     simulationComplete: false,
     showStartPrompt: true,
     draftReplies: {},
-    lastDraftEvaluation: null,
-    draftSubmissionError: null,
-    draftSubmissionPending: false,
+    lastEvaluation: null,
+    replyEvaluationError: null,
+    replyEvaluationPending: false,
   };
 }
 
@@ -146,7 +146,11 @@ export function loadSimulationState(story: Story): SimulationState {
   }
 
   try {
-    const parsed = JSON.parse(raw) as Partial<SimulationState>;
+    const parsed = JSON.parse(raw) as Partial<SimulationState> & {
+      lastDraftEvaluation?: DraftPlayLogEntry | null;
+      draftSubmissionError?: string | null;
+      draftSubmissionPending?: boolean;
+    };
     if (
       parsed.storyTitle !== story.meta.title ||
       !isStringArray(parsed.availableIds) ||
@@ -172,15 +176,19 @@ export function loadSimulationState(story: Story): SimulationState {
       showStartPrompt:
         typeof parsed.showStartPrompt === "boolean" ? parsed.showStartPrompt : false,
       draftReplies: isDraftComposerMap(parsed.draftReplies) ? parsed.draftReplies : fallback.draftReplies,
-      lastDraftEvaluation:
-        parsed.lastDraftEvaluation && typeof parsed.lastDraftEvaluation === "object"
-          ? (parsed.lastDraftEvaluation as DraftPlayLogEntry)
-          : fallback.lastDraftEvaluation,
-      draftSubmissionError:
-        typeof parsed.draftSubmissionError === "string"
-          ? parsed.draftSubmissionError
-          : fallback.draftSubmissionError,
-      draftSubmissionPending: false,
+      lastEvaluation:
+        parsed.lastEvaluation && typeof parsed.lastEvaluation === "object"
+          ? (parsed.lastEvaluation as DraftPlayLogEntry)
+          : parsed.lastDraftEvaluation && typeof parsed.lastDraftEvaluation === "object"
+            ? parsed.lastDraftEvaluation
+            : fallback.lastEvaluation,
+      replyEvaluationError:
+        typeof parsed.replyEvaluationError === "string"
+          ? parsed.replyEvaluationError
+          : typeof parsed.draftSubmissionError === "string"
+            ? parsed.draftSubmissionError
+            : fallback.replyEvaluationError,
+      replyEvaluationPending: false,
     };
   } catch {
     return fallback;
@@ -242,6 +250,7 @@ export function applyChoice(
   state: SimulationState,
   messageId: string,
   choiceIndex: number,
+  gradedResult: DraftGradeResult,
 ): SimulationState {
   if (state.handledIds.includes(messageId)) {
     return state;
@@ -249,76 +258,21 @@ export function applyChoice(
 
   const message = story.messages[messageId];
   const choice = message.choices[choiceIndex];
-  const stepIndex = state.decisionLog.length + 1;
-  const openedIds = state.openedIds.includes(messageId) ? state.openedIds : [...state.openedIds, messageId];
-  const handledIds = [...state.handledIds, messageId];
-  const availableIds = [...state.availableIds];
-  const unlockedNow: string[] = [];
-
-  for (const nextId of choice.next) {
-    if (!availableIds.includes(nextId)) {
-      availableIds.push(nextId);
-      unlockedNow.push(nextId);
-    }
-  }
-
-  const trust = { ...state.trust };
-  for (const [stakeholder, delta] of Object.entries(choice.effects)) {
-    const key = stakeholder as KnownStakeholder;
-    trust[key] = clampTrust(trust[key] + Number(delta));
-  }
-
-  const decisionLog = [
-    ...state.decisionLog,
-    {
-      step_index: stepIndex,
-      message_id: messageId,
-      subject: message.subject || messageId,
-      choice_label: choice.label,
-      effects: { ...choice.effects },
-    },
-  ];
-  const trustHistory = [
-    ...state.trustHistory,
-    {
-      step_index: stepIndex,
-      label: message.subject || messageId,
-      trust: { ...trust },
-    },
-  ];
-  const logEntries = [...state.logEntries];
-  const logLine = choice.log.trim();
-  if (logLine) {
-    logEntries.push(`You chose: ${logLine}`);
-  }
-  if (unlockedNow.length > 0) {
-    const unlockedSubjects = unlockedNow.map((nextId) => story.messages[nextId].subject).join(", ");
-    logEntries.push(`New emails unlocked: ${unlockedSubjects}.`);
-  }
-
-  const currentMinutes = advanceTime(state.currentMinutes);
-  const ending = checkEndings(story.endings, trust);
-  const nextBaseState: SimulationState = {
-    ...state,
-    availableIds,
-    openedIds,
-    handledIds,
-    trust,
-    decisionLog,
-    trustHistory,
-    logEntries,
-    currentMinutes,
-    lastReplyPreview: generateDraftReplyPreview(message, choice),
-    lastTimeAdvanceNotice: `Time advanced to ${formatDayTime(currentMinutes)}.`,
-    ending,
-    simulationComplete: ending ? false : allActionableMessagesHandled(story, availableIds, handledIds),
-    selectedMessageId: null,
-  };
-
-  return {
-    ...nextBaseState,
-    selectedMessageId: pickNextMessage(nextBaseState),
-  };
+  return applyEvaluatedReply(story, state, {
+    messageId,
+    subject: message.subject || messageId,
+    replySource: "preset",
+    responseLabel: choice.label,
+    replyText: buildPresetReplyText(message, choice),
+    replyType: inferReplyTypeForMessage(message),
+    trustDeltas: gradedResult.trust_deltas,
+    rubricDetail: gradedResult.rubric_detail,
+    rubricScores: gradedResult.rubric_scores,
+    unlockedCandidateIds: choice.next,
+    logLine: choice.log.trim()
+      ? `You chose the preset reply: ${choice.log.trim()}.`
+      : `You chose the preset reply "${choice.label}".`,
+  });
 }
 
 type CuePattern = {
@@ -569,7 +523,7 @@ export function applyDraftedReply(
   story: Story,
   state: SimulationState,
   messageId: string,
-  gradedResult?: DraftGradeResult,
+  gradedResult: DraftGradeResult,
 ): SimulationState {
   if (state.handledIds.includes(messageId)) {
     return state;
@@ -581,102 +535,26 @@ export function applyDraftedReply(
     replyType: "Public statement" as ReplyType,
   };
   const draftedReplyText = composer.text.trim();
-  const [fallbackTrustDeltas, fallbackRubricDetail, fallbackRubricScores] = gradeReply(
-    draftedReplyText,
-    composer.replyType,
-  );
-  const trustDeltas = gradedResult?.trust_deltas ?? fallbackTrustDeltas;
-  const rubricDetail = gradedResult?.rubric_detail ?? fallbackRubricDetail;
-  const rubricScores = gradedResult?.rubric_scores ?? fallbackRubricScores;
-  const stepIndex = state.decisionLog.length + 1;
-  const openedIds = state.openedIds.includes(messageId) ? state.openedIds : [...state.openedIds, messageId];
-  const handledIds = [...state.handledIds, messageId];
-  const availableIds = [...state.availableIds];
-  const unlockedNow: string[] = [];
-
-  for (const nextId of getDraftUnlockIds(story, message)) {
-    if (!availableIds.includes(nextId)) {
-      availableIds.push(nextId);
-      unlockedNow.push(nextId);
-    }
-  }
-
-  const trust = { ...state.trust };
-  for (const stakeholder of KNOWN_STAKEHOLDERS) {
-    trust[stakeholder] = clampTrust(trust[stakeholder] + Number(trustDeltas[stakeholder] ?? 0));
-  }
-
-  const decisionLog = [
-    ...state.decisionLog,
-    {
-      step_index: stepIndex,
-      message_id: messageId,
-      subject: message.subject || messageId,
-      choice_label: `Drafted reply (${composer.replyType})`,
-      effects: { ...trustDeltas },
-    },
-  ];
-
-  const playLogEntry: DraftPlayLogEntry = {
-    step_index: stepIndex,
-    message_id: messageId,
+  const nextState = applyEvaluatedReply(story, state, {
+    messageId,
     subject: message.subject || messageId,
-    drafted_reply_text: draftedReplyText,
-    reply_type: composer.replyType,
-    rubric_scores: rubricScores,
-    trust_deltas: { ...trustDeltas },
-    rubric_detail: rubricDetail,
-  };
+    replySource: "draft",
+    responseLabel: `Drafted reply (${composer.replyType})`,
+    replyText: draftedReplyText,
+    replyType: composer.replyType,
+    trustDeltas: gradedResult.trust_deltas,
+    rubricDetail: gradedResult.rubric_detail,
+    rubricScores: gradedResult.rubric_scores,
+    unlockedCandidateIds: getDraftUnlockIds(story, message),
+    logLine: `You drafted a ${composer.replyType.toLowerCase()} for "${message.subject}".`,
+  });
 
-  const trustHistory = [
-    ...state.trustHistory,
-    {
-      step_index: stepIndex,
-      label: message.subject || messageId,
-      trust: { ...trust },
-    },
-  ];
-
-  const logEntries = [...state.logEntries];
-  logEntries.push(`You drafted a ${composer.replyType.toLowerCase()} for "${message.subject}".`);
-  if (rubricDetail.warnings.length > 0) {
-    rubricDetail.warnings.forEach((warning) => logEntries.push(`Draft warning: ${warning}`));
-  }
-  if (unlockedNow.length > 0) {
-    const unlockedSubjects = unlockedNow.map((nextId) => story.messages[nextId].subject).join(", ");
-    logEntries.push(`New emails unlocked: ${unlockedSubjects}.`);
-  }
-
-  const currentMinutes = advanceTime(state.currentMinutes);
-  const ending = checkEndings(story.endings, trust);
-  const nextDraftReplies = { ...state.draftReplies };
+  const nextDraftReplies = { ...nextState.draftReplies };
   delete nextDraftReplies[messageId];
 
-  const nextBaseState: SimulationState = {
-    ...state,
-    availableIds,
-    openedIds,
-    handledIds,
-    trust,
-    decisionLog,
-    playLog: [...state.playLog, playLogEntry],
-    trustHistory,
-    logEntries,
-    currentMinutes,
-    lastReplyPreview: draftedReplyText,
-    lastTimeAdvanceNotice: `Time advanced to ${formatDayTime(currentMinutes)}.`,
-    ending,
-    simulationComplete: ending ? false : allActionableMessagesHandled(story, availableIds, handledIds),
-    selectedMessageId: null,
-    draftReplies: nextDraftReplies,
-    lastDraftEvaluation: playLogEntry,
-    draftSubmissionError: null,
-    draftSubmissionPending: false,
-  };
-
   return {
-    ...nextBaseState,
-    selectedMessageId: pickNextMessage(nextBaseState),
+    ...nextState,
+    draftReplies: nextDraftReplies,
   };
 }
 
@@ -769,7 +647,7 @@ export function getLastDecisionEffects(state: SimulationState): Record<KnownStak
     );
   }
 
-  const lastEffects = state.decisionLog[state.decisionLog.length - 1].effects;
+  const lastEffects = state.decisionLog[state.decisionLog.length - 1].trust_deltas;
   return KNOWN_STAKEHOLDERS.reduce((accumulator, stakeholder) => {
     accumulator[stakeholder] = Number(lastEffects[stakeholder] ?? 0);
     return accumulator;
@@ -786,21 +664,8 @@ export function formatDeltaText(value: number): string {
   return "0";
 }
 
-export function buildConsequenceHint(effects: Partial<Record<KnownStakeholder, number>>): string {
-  if (Object.keys(effects).length === 0) {
-    return "Likely: no major trust shift";
-  }
-
-  const parts = KNOWN_STAKEHOLDERS.flatMap((stakeholder) => {
-    const delta = effects[stakeholder];
-    if (!delta) {
-      return [];
-    }
-    const sign = delta > 0 ? "+" : "-";
-    return [`${sign}${STAKEHOLDER_EFFECT_LABELS[stakeholder]}`];
-  });
-
-  return `Likely: ${parts.length > 0 ? parts.join(", ") : "mixed signals with little net movement"}`;
+export function buildConsequenceHint(): string {
+  return "Graded by the same local model after you choose it.";
 }
 
 export function generateDraftReplyPreview(message: Message, choice: Choice): string {
@@ -813,6 +678,24 @@ export function generateDraftReplyPreview(message: Message, choice: Choice): str
     `We are proceeding with the following response: ${actionLine}.`,
     "I will keep you updated as stakeholder outreach and review steps move forward.",
   ].join("\n");
+}
+
+export function buildPresetReplyText(message: Message, choice: Choice): string {
+  const actionLine = choice.log.trim() || choice.label;
+  return `In response to "${message.subject}", we will ${actionLine}.`;
+}
+
+export function inferReplyTypeForMessage(message: Message): ReplyType {
+  if (message.stakeholder === "regulator") {
+    return "Email to regulator";
+  }
+  if (message.stakeholder === "community") {
+    return "Email to community";
+  }
+  if (message.stakeholder === "engineering" || message.stakeholder === "internal") {
+    return "Internal update";
+  }
+  return "Public statement";
 }
 
 export function extractDecisionSummary(message: Message): string {
@@ -953,7 +836,7 @@ export function getTotalDeltas(state: SimulationState): Record<KnownStakeholder,
   }, {} as Record<KnownStakeholder, number>);
 
   for (const entry of state.decisionLog) {
-    for (const [stakeholder, delta] of Object.entries(entry.effects)) {
+    for (const [stakeholder, delta] of Object.entries(entry.trust_deltas)) {
       totals[stakeholder as KnownStakeholder] += Number(delta);
     }
   }
@@ -961,43 +844,38 @@ export function getTotalDeltas(state: SimulationState): Record<KnownStakeholder,
   return totals;
 }
 
-export function explainStakeholderOutcome(stakeholder: KnownStakeholder, totalDelta: number): string {
-  const drivers: Record<KnownStakeholder, { positive: string; negative: string }> = {
-    regulator: {
-      positive: "you prioritized transparency, early notice, and outside review",
-      negative: "you delayed disclosure and made oversight feel too tightly managed",
-    },
-    investor: {
-      positive: "you projected governance discipline and gave investors a clearer basis for confidence",
-      negative: "you made execution feel less predictable or raised doubts about commercialization readiness",
-    },
-    community: {
-      positive: "you emphasized visible engagement and treated local concerns as part of governance",
-      negative: "you delayed direct engagement and let residents feel decisions were happening around them",
-    },
-    engineering: {
-      positive: "you supported technical rigor and let uncertainty be discussed honestly",
-      negative: "you emphasized speed over technical candor and flattened engineering concerns",
-    },
-    media: {
-      positive: "you gave reporters timely, consistent information instead of letting rumor fill the gap",
-      negative: "you allowed delayed public response or inconsistent messaging to shape the story",
-    },
-  };
+export function summarizeStakeholderOutcome(
+  state: Pick<SimulationState, "decisionLog">,
+  stakeholder: KnownStakeholder,
+): string {
+  const totalDelta = state.decisionLog.reduce(
+    (total, entry) => total + Number(entry.trust_deltas[stakeholder] ?? 0),
+    0,
+  );
+  const contributors = state.decisionLog
+    .map((entry) => ({
+      entry,
+      delta: Number(entry.trust_deltas[stakeholder] ?? 0),
+    }))
+    .filter((item) => item.delta !== 0)
+    .sort((left, right) => Math.abs(right.delta) - Math.abs(left.delta));
 
-  if (totalDelta >= 10) {
-    return `Trust improved substantially because ${drivers[stakeholder].positive}.`;
+  if (contributors.length === 0) {
+    return "No graded reply materially shifted this stakeholder yet.";
   }
-  if (totalDelta > 0) {
-    return `Trust improved modestly because ${drivers[stakeholder].positive}.`;
-  }
-  if (totalDelta <= -10) {
-    return `Trust fell sharply because ${drivers[stakeholder].negative}.`;
-  }
-  if (totalDelta < 0) {
-    return `Trust slipped because ${drivers[stakeholder].negative}.`;
-  }
-  return "Trust stayed near its starting point because your choices sent mixed or balanced signals to this stakeholder.";
+
+  const strongest = contributors[0];
+  const signalNames = getStakeholderSignalSummary(strongest.entry, stakeholder);
+  const signalText =
+    signalNames.length > 0 ? ` Strongest rubric signals: ${signalNames.join(", ")}.` : "";
+  const direction =
+    totalDelta > 0
+      ? `Net ${formatSignedNumber(totalDelta)}. The biggest lift came from "${strongest.entry.response_label}" on "${strongest.entry.subject}".`
+      : totalDelta < 0
+        ? `Net ${formatSignedNumber(totalDelta)}. The biggest drag came from "${strongest.entry.response_label}" on "${strongest.entry.subject}".`
+        : `Net 0. The sharpest movement still came from "${strongest.entry.response_label}" on "${strongest.entry.subject}".`;
+
+  return `${direction}${signalText}`;
 }
 
 export function getMessagePreview(body: string, length = 96): string {
@@ -1026,4 +904,132 @@ function isQuickFilter(value: unknown): value is QuickFilter {
 
 function capitalize(value: string): string {
   return `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
+}
+
+function applyEvaluatedReply(
+  story: Story,
+  state: SimulationState,
+  input: {
+    messageId: string;
+    subject: string;
+    replySource: "preset" | "draft";
+    responseLabel: string;
+    replyText: string;
+    replyType: ReplyType;
+    trustDeltas: Partial<Record<KnownStakeholder, number>>;
+    rubricDetail: RubricDetail;
+    rubricScores: RubricScores;
+    unlockedCandidateIds: string[];
+    logLine: string;
+  },
+): SimulationState {
+  const stepIndex = state.decisionLog.length + 1;
+  const openedIds = state.openedIds.includes(input.messageId)
+    ? state.openedIds
+    : [...state.openedIds, input.messageId];
+  const handledIds = [...state.handledIds, input.messageId];
+  const availableIds = [...state.availableIds];
+  const unlockedNow: string[] = [];
+
+  for (const nextId of input.unlockedCandidateIds) {
+    if (!availableIds.includes(nextId) && nextId in story.messages) {
+      availableIds.push(nextId);
+      unlockedNow.push(nextId);
+    }
+  }
+
+  const trust = { ...state.trust };
+  for (const stakeholder of KNOWN_STAKEHOLDERS) {
+    trust[stakeholder] = clampTrust(trust[stakeholder] + Number(input.trustDeltas[stakeholder] ?? 0));
+  }
+
+  const evaluationEntry: ReplyEvaluationEntry = {
+    step_index: stepIndex,
+    message_id: input.messageId,
+    subject: input.subject,
+    reply_source: input.replySource,
+    response_label: input.responseLabel,
+    reply_text: input.replyText,
+    reply_type: input.replyType,
+    rubric_scores: input.rubricScores,
+    trust_deltas: { ...input.trustDeltas },
+    rubric_detail: input.rubricDetail,
+  };
+
+  const trustHistory = [
+    ...state.trustHistory,
+    {
+      step_index: stepIndex,
+      label: input.subject,
+      trust: { ...trust },
+    },
+  ];
+  const logEntries = [...state.logEntries, input.logLine];
+  if (input.rubricDetail.warnings.length > 0) {
+    input.rubricDetail.warnings.forEach((warning) => logEntries.push(`Grading warning: ${warning}`));
+  }
+  if (unlockedNow.length > 0) {
+    const unlockedSubjects = unlockedNow.map((nextId) => story.messages[nextId].subject).join(", ");
+    logEntries.push(`New emails unlocked: ${unlockedSubjects}.`);
+  }
+
+  const currentMinutes = advanceTime(state.currentMinutes);
+  const ending = checkEndings(story.endings, trust);
+  const nextBaseState: SimulationState = {
+    ...state,
+    availableIds,
+    openedIds,
+    handledIds,
+    trust,
+    decisionLog: [...state.decisionLog, evaluationEntry],
+    playLog: [...state.playLog, evaluationEntry],
+    trustHistory,
+    logEntries,
+    currentMinutes,
+    lastReplyPreview: input.replyText,
+    lastTimeAdvanceNotice: `Time advanced to ${formatDayTime(currentMinutes)}.`,
+    ending,
+    simulationComplete: ending ? false : allActionableMessagesHandled(story, availableIds, handledIds),
+    selectedMessageId: null,
+    lastEvaluation: evaluationEntry,
+    replyEvaluationError: null,
+    replyEvaluationPending: false,
+  };
+
+  return {
+    ...nextBaseState,
+    selectedMessageId: pickNextMessage(nextBaseState),
+  };
+}
+
+function formatSignedNumber(value: number): string {
+  return value >= 0 ? `+${value}` : `${value}`;
+}
+
+function getStakeholderSignalSummary(
+  entry: ReplyEvaluationEntry,
+  stakeholder: KnownStakeholder,
+): string[] {
+  const positiveDimensions = Object.entries(entry.rubric_scores)
+    .filter(([, score]) => score > 0)
+    .map(([dimension]) => dimension.toLowerCase());
+  const penalties = entry.rubric_detail.penalties;
+  const stakeholderSpecificPenalties: Record<KnownStakeholder, string[]> = {
+    regulator: penalties.overconfidentClaims > 0 ? ["overconfidence penalty"] : [],
+    community: penalties.dismissiveTone > 0 ? ["dismissive tone penalty"] : [],
+    engineering: penalties.overconfidentClaims > 0 ? ["overconfidence penalty"] : [],
+    media:
+      penalties.noCommentStonewalling > 0 || penalties.inconsistencyCues > 0
+        ? [
+            penalties.noCommentStonewalling > 0 ? "stonewalling penalty" : "",
+            penalties.inconsistencyCues > 0 ? "inconsistency penalty" : "",
+          ].filter(Boolean)
+        : [],
+    investor: penalties.transparencyImpliesDelay > 0 ? ["delay signal penalty"] : [],
+  };
+
+  return Array.from(new Set([...positiveDimensions, ...stakeholderSpecificPenalties[stakeholder]])).slice(
+    0,
+    3,
+  );
 }

@@ -15,6 +15,7 @@ export type ReplyType =
   | "Email to regulator"
   | "Email to community"
   | "Internal update";
+export type ReplySource = "preset" | "draft";
 export type RubricDimension =
   | "Transparency"
   | "Verification"
@@ -68,14 +69,6 @@ export interface Story {
   endings: Ending[];
 }
 
-export interface DecisionLogEntry {
-  step_index: number;
-  message_id: string;
-  subject: string;
-  choice_label: string;
-  effects: Partial<Record<KnownStakeholder, number>>;
-}
-
 export interface TrustSnapshot {
   step_index: number;
   label: string;
@@ -116,22 +109,24 @@ export interface RubricDetail {
   penalties: RubricPenaltyFlags;
 }
 
-export interface DraftPlayLogEntry {
-  step_index: number;
-  message_id: string;
-  subject: string;
-  drafted_reply_text: string;
-  reply_type: ReplyType;
-  rubric_scores: RubricScores;
-  trust_deltas: Partial<Record<KnownStakeholder, number>>;
-  rubric_detail: RubricDetail;
-}
-
 export interface DraftGradeResult {
   rubric_scores: RubricScores;
   trust_deltas: Partial<Record<KnownStakeholder, number>>;
   rubric_detail: RubricDetail;
 }
+
+export interface ReplyEvaluationEntry extends DraftGradeResult {
+  step_index: number;
+  message_id: string;
+  subject: string;
+  reply_source: ReplySource;
+  response_label: string;
+  reply_text: string;
+  reply_type: ReplyType;
+}
+
+export type DecisionLogEntry = ReplyEvaluationEntry;
+export type DraftPlayLogEntry = ReplyEvaluationEntry;
 
 export type DraftGradingStatus =
   | "checking"
@@ -176,7 +171,7 @@ export interface SimulationState {
   simulationComplete: boolean;
   showStartPrompt: boolean;
   draftReplies: Record<string, DraftComposerState>;
-  lastDraftEvaluation: DraftPlayLogEntry | null;
-  draftSubmissionError: string | null;
-  draftSubmissionPending: boolean;
+  lastEvaluation: ReplyEvaluationEntry | null;
+  replyEvaluationError: string | null;
+  replyEvaluationPending: boolean;
 }

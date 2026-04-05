@@ -8,7 +8,7 @@ export const DEADLINE_DELIVERABLE = "External press statement on the test anomal
 export const DEADLINE_CONSEQUENCE =
   "If you delay too long, the media narrative forms without you.";
 export const ENDING_PATTERN = /^(>=|<=|>|<)\s*(\d{1,3})$/;
-export const STORAGE_KEY = "inbox-simulator-state";
+export const STORAGE_KEY = "inbox-simulator-state-v2";
 
 export const DECISION_SUMMARIES: Record<string, string> = {
   m1: "Decision: Do we disclose the uncertainty publicly and invite outside review?",

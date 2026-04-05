@@ -44,9 +44,11 @@ type DraftGradeResult = {
   rubric_detail: RubricDetail;
 };
 
-type GradeDraftRequest = {
+type GradeReplyRequest = {
   replyText?: string;
   replyType?: string;
+  source?: "preset" | "draft";
+  responseLabel?: string;
   message?: {
     id?: string;
     subject?: string;
@@ -185,11 +187,11 @@ async function getDraftGradingHealth() {
   ]);
 
   let status: "ready" | "warming_up" | "model_missing" | "binary_missing" | "server_unreachable";
-  let statusMessage = "Local llama.cpp draft grader is warming up.";
+  let statusMessage = "Local llama.cpp reply grader is warming up.";
 
   if (llamaReachable) {
     status = "ready";
-    statusMessage = "Local llama.cpp draft grader is ready on this machine.";
+    statusMessage = "Local llama.cpp reply grader is ready on this machine.";
   } else if (!modelExists) {
     status = "model_missing";
     statusMessage = "The local GGUF model is missing. Run `npm run dev` and wait for the model download to finish.";
@@ -198,7 +200,7 @@ async function getDraftGradingHealth() {
     statusMessage = "The local llama-server binary is missing. Run `npm run dev` to build the local grader.";
   } else {
     status = "warming_up";
-    statusMessage = "Local llama.cpp is loading the model. Draft grading will unlock once warm-up finishes.";
+    statusMessage = "Local llama.cpp is loading the model. Reply grading will unlock once warm-up finishes.";
   }
 
   return {
@@ -213,7 +215,7 @@ async function getDraftGradingHealth() {
   };
 }
 
-function buildGradingPrompt(requestBody: Required<GradeDraftRequest>) {
+function buildGradingPrompt(requestBody: Required<GradeReplyRequest>) {
   return [
     "You are grading a player-written reply inside a governance and crisis-communications simulator.",
     "Return exactly one JSON object that matches the provided schema.",
@@ -221,10 +223,11 @@ function buildGradingPrompt(requestBody: Required<GradeDraftRequest>) {
     "Use exactly four top-level keys: `scores`, `reasons`, `warnings`, and `penalties`.",
     "Under `reasons`, write one short sentence for each rubric dimension.",
     "Do not include chain-of-thought, analysis text, think tags, channel markers, markdown fences, or prose before or after the JSON object.",
-    "Score each rubric dimension from 0 to 2 using only the actual reply text.",
+    "Score each rubric dimension from 0 to 2 using only the provided reply text.",
     "Be transparent and explainable: every score should be grounded in phrases from the draft.",
     "If the reply is weak, vague, too short, overconfident, dismissive, or evasive, score conservatively.",
     "Do not add extra keys.",
+    "If `source` is `preset`, the reply text is a concise canonical summary of the preset action. Grade that summary directly without inventing missing details.",
     "",
     "Rubric dimensions:",
     "- Transparency: mentions uncertainty, limits, ongoing investigation, or what is not yet known.",
@@ -250,8 +253,10 @@ function buildGradingPrompt(requestBody: Required<GradeDraftRequest>) {
     "Scenario:",
     JSON.stringify(
       {
+        source: requestBody.source,
+        response_label: requestBody.responseLabel,
         reply_type: requestBody.replyType,
-        drafted_reply_text: requestBody.replyText,
+        reply_text: requestBody.replyText,
         current_email: requestBody.message,
       },
       null,
@@ -561,8 +566,8 @@ app.get("/api/health", async (_request, response) => {
   response.json(await getDraftGradingHealth());
 });
 
-app.post("/api/grade-draft", async (request, response) => {
-  const { replyText, replyType, message } = request.body as GradeDraftRequest;
+async function handleGradeReply(request: express.Request, response: express.Response) {
+  const { replyText, replyType, source, responseLabel, message } = request.body as GradeReplyRequest;
 
   if (!replyText || !replyType || !message?.subject || !message?.body) {
     response.status(400).json({
@@ -584,6 +589,8 @@ app.post("/api/grade-draft", async (request, response) => {
     const gradingPrompt = buildGradingPrompt({
       replyText,
       replyType,
+      source: source ?? "draft",
+      responseLabel: responseLabel ?? "",
       message,
     });
 
@@ -643,7 +650,10 @@ app.post("/api/grade-draft", async (request, response) => {
       error instanceof Error ? error.message : "Unknown local llama grading error.";
     response.status(500).json({ error: messageText });
   }
-});
+}
+
+app.post("/api/grade-reply", handleGradeReply);
+app.post("/api/grade-draft", handleGradeReply);
 
 app.listen(port, "127.0.0.1", () => {
   console.log(`Simulator grading server listening on http://127.0.0.1:${port}`);

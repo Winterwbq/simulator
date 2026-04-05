@@ -6,8 +6,8 @@ import { InboxPanel } from "./components/InboxPanel";
 import { OpenEmailPanel } from "./components/OpenEmailPanel";
 import { TimeBanner } from "./components/TimeBanner";
 import { TrustDashboard } from "./components/TrustDashboard";
-import { fetchDraftGradingHealth, gradeDraftReplyWithApi } from "./lib/api";
-import { getFilteredMessageIds, loadSimulationState, markMessageOpened, persistSimulationState, resetPersistedSimulationState, downloadPlaythrough, initializeSimulation, applyChoice, applyDraftedReply, updateDraftReply } from "./lib/simulation";
+import { fetchDraftGradingHealth, gradeReplyWithApi } from "./lib/api";
+import { getFilteredMessageIds, loadSimulationState, markMessageOpened, persistSimulationState, resetPersistedSimulationState, downloadPlaythrough, initializeSimulation, applyChoice, applyDraftedReply, buildPresetReplyText, inferReplyTypeForMessage, updateDraftReply } from "./lib/simulation";
 import { validateStory } from "./lib/storyValidation";
 import type { DraftGradingHealth, SimulationState } from "./lib/types";
 
@@ -19,7 +19,7 @@ const DEFAULT_DRAFT_GRADING_HEALTH: DraftGradingHealth = {
   modelExists: false,
   serverBinaryExists: false,
   status: "checking",
-  statusMessage: "Checking the local llama.cpp draft grader...",
+  statusMessage: "Checking the local llama.cpp reply grader...",
 };
 
 export default function App() {
@@ -130,8 +130,47 @@ export default function App() {
     setState(initializeSimulation(storyData));
   };
 
-  const handleChoose = (messageId: string, choiceIndex: number) => {
-    setState((current) => applyChoice(storyData, current, messageId, choiceIndex));
+  const handleChoose = async (messageId: string, choiceIndex: number) => {
+    const message = storyData.messages[messageId];
+    const choice = message?.choices[choiceIndex];
+    if (!message || !choice) {
+      return;
+    }
+
+    if (draftGradingHealth.status !== "ready") {
+      setState((current) => ({
+        ...current,
+        replyEvaluationPending: false,
+        replyEvaluationError: draftGradingHealth.statusMessage,
+      }));
+      return;
+    }
+
+    setState((current) => ({
+      ...current,
+      replyEvaluationPending: true,
+      replyEvaluationError: null,
+    }));
+
+    try {
+      const graded = await gradeReplyWithApi({
+        replyText: buildPresetReplyText(message, choice),
+        replyType: inferReplyTypeForMessage(message),
+        message,
+        source: "preset",
+        responseLabel: choice.label,
+      });
+
+      setState((current) => applyChoice(storyData, current, messageId, choiceIndex, graded));
+    } catch (error) {
+      const messageText =
+        error instanceof Error ? error.message : "Reply grading request failed.";
+      setState((current) => ({
+        ...current,
+        replyEvaluationPending: false,
+        replyEvaluationError: messageText,
+      }));
+    }
   };
 
   const handleSendDraftedReply = async (messageId: string) => {
@@ -144,33 +183,35 @@ export default function App() {
     if (draftGradingHealth.status !== "ready") {
       setState((current) => ({
         ...current,
-        draftSubmissionPending: false,
-        draftSubmissionError: draftGradingHealth.statusMessage,
+        replyEvaluationPending: false,
+        replyEvaluationError: draftGradingHealth.statusMessage,
       }));
       return;
     }
 
     setState((current) => ({
       ...current,
-      draftSubmissionPending: true,
-      draftSubmissionError: null,
+      replyEvaluationPending: true,
+      replyEvaluationError: null,
     }));
 
     try {
-      const graded = await gradeDraftReplyWithApi({
+      const graded = await gradeReplyWithApi({
         replyText: draft.text,
         replyType: draft.replyType,
         message,
+        source: "draft",
+        responseLabel: `Drafted reply (${draft.replyType})`,
       });
 
       setState((current) => applyDraftedReply(storyData, current, messageId, graded));
     } catch (error) {
       const messageText =
-        error instanceof Error ? error.message : "The local draft grading request failed.";
+        error instanceof Error ? error.message : "The local reply grading request failed.";
       setState((current) => ({
         ...current,
-        draftSubmissionPending: false,
-        draftSubmissionError: messageText,
+        replyEvaluationPending: false,
+        replyEvaluationError: messageText,
       }));
     }
   };
@@ -281,8 +322,8 @@ export default function App() {
                       )
                     }
                     onSendDraftedReply={handleSendDraftedReply}
-                    draftSubmissionPending={state.draftSubmissionPending}
-                    draftSubmissionError={state.draftSubmissionError}
+                    replyEvaluationPending={state.replyEvaluationPending}
+                    replyEvaluationError={state.replyEvaluationError}
                     draftGradingHealth={draftGradingHealth}
                   />
                   <AnalysisPanels state={state} logLimit={8} />

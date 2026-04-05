@@ -10,8 +10,8 @@ interface OpenEmailPanelProps {
   onDraftReplyChange: (messageId: string, value: string) => void;
   onDraftReplyTypeChange: (messageId: string, value: ReplyType) => void;
   onSendDraftedReply: (messageId: string) => void;
-  draftSubmissionPending: boolean;
-  draftSubmissionError: string | null;
+  replyEvaluationPending: boolean;
+  replyEvaluationError: string | null;
   draftGradingHealth: DraftGradingHealth;
 }
 
@@ -29,8 +29,8 @@ function renderChoiceActions(
   onDraftReplyChange: OpenEmailPanelProps["onDraftReplyChange"],
   onDraftReplyTypeChange: OpenEmailPanelProps["onDraftReplyTypeChange"],
   onSendDraftedReply: OpenEmailPanelProps["onSendDraftedReply"],
-  draftSubmissionPending: OpenEmailPanelProps["draftSubmissionPending"],
-  draftSubmissionError: OpenEmailPanelProps["draftSubmissionError"],
+  replyEvaluationPending: OpenEmailPanelProps["replyEvaluationPending"],
+  replyEvaluationError: OpenEmailPanelProps["replyEvaluationError"],
   draftGradingHealth: OpenEmailPanelProps["draftGradingHealth"],
 ) {
   if (message.choices.length > 0) {
@@ -47,12 +47,20 @@ function renderChoiceActions(
         ) : (
           <>
             <h3 className="section-title">Next Action</h3>
+            {replyEvaluationError ? (
+              <div className="callout error draft-error">{replyEvaluationError}</div>
+            ) : null}
             {message.choices.map((choice, index) => (
               <div className="choice-block" key={`${message.id}-choice-${index}`}>
-                <button className="primary-button wide-button" type="button" onClick={() => onChoose(message.id, index)}>
+                <button
+                  className="primary-button wide-button"
+                  type="button"
+                  onClick={() => onChoose(message.id, index)}
+                  disabled={replyEvaluationPending || draftGradingHealth.status !== "ready"}
+                >
                   {choice.label}
                 </button>
-                <div className="choice-hint">{buildConsequenceHint(choice.effects)}</div>
+                <div className="choice-hint">{buildConsequenceHint()}</div>
               </div>
             ))}
 
@@ -63,7 +71,7 @@ function renderChoiceActions(
                 {draftGradingHealth.status !== "ready" ? (
                   <div className={`callout ${draftGradingHealth.status === "error" || draftGradingHealth.status === "model_missing" || draftGradingHealth.status === "binary_missing" ? "error" : "info"}`}>
                     {draftGradingHealth.status === "checking"
-                      ? "Checking the local draft grader."
+                      ? "Checking the local reply grader."
                       : draftGradingHealth.statusMessage}
                   </div>
                 ) : null}
@@ -95,20 +103,17 @@ function renderChoiceActions(
                 </select>
 
                 <div className="draft-send-row">
-                  {draftSubmissionError ? (
-                    <div className="callout error draft-error">{draftSubmissionError}</div>
-                  ) : null}
                   <button
                     className="secondary-button"
                     type="button"
                     onClick={() => onSendDraftedReply(message.id)}
                     disabled={
                       composer.text.trim().length === 0 ||
-                      draftSubmissionPending ||
+                      replyEvaluationPending ||
                       draftGradingHealth.status !== "ready"
                     }
                   >
-                    {draftSubmissionPending ? "Grading reply..." : "Send drafted reply"}
+                    {replyEvaluationPending ? "Grading reply..." : "Send drafted reply"}
                   </button>
                 </div>
               </div>
@@ -130,8 +135,8 @@ export function OpenEmailPanel({
   onDraftReplyChange,
   onDraftReplyTypeChange,
   onSendDraftedReply,
-  draftSubmissionPending,
-  draftSubmissionError,
+  replyEvaluationPending,
+  replyEvaluationError,
   draftGradingHealth,
 }: OpenEmailPanelProps) {
   if (!messageId) {
@@ -187,8 +192,8 @@ export function OpenEmailPanel({
         onDraftReplyChange,
         onDraftReplyTypeChange,
         onSendDraftedReply,
-        draftSubmissionPending,
-        draftSubmissionError,
+        replyEvaluationPending,
+        replyEvaluationError,
         draftGradingHealth,
       )}
 

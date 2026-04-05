@@ -326,7 +326,7 @@ async function main() {
   });
 
   await waitForHealth(10 * 60 * 1000);
-  console.log("llama-server is healthy and ready for local draft grading.");
+  console.log("llama-server is healthy and ready for local reply grading.");
 }
 
 main().catch((error) => {

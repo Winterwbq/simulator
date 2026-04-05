@@ -10,12 +10,14 @@ export async function fetchDraftGradingHealth(): Promise<DraftGradingHealth> {
   return (await response.json()) as DraftGradingHealth;
 }
 
-export async function gradeDraftReplyWithApi(input: {
+export async function gradeReplyWithApi(input: {
   replyText: string;
   replyType: ReplyType;
   message: Message;
+  source?: "preset" | "draft";
+  responseLabel?: string;
 }): Promise<DraftGradeResult> {
-  const response = await fetch("/api/grade-draft", {
+  const response = await fetch("/api/grade-reply", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -27,7 +29,7 @@ export async function gradeDraftReplyWithApi(input: {
     const errorPayload = (await response.json().catch(() => null)) as
       | { error?: string }
       | null;
-    throw new Error(errorPayload?.error ?? "Draft grading request failed.");
+    throw new Error(errorPayload?.error ?? "Reply grading request failed.");
   }
 
   return (await response.json()) as DraftGradeResult;
