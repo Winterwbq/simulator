@@ -4,8 +4,10 @@ import { AnalysisPanels } from "./components/AnalysisPanels";
 import { BriefingPanel } from "./components/BriefingPanel";
 import { InboxPanel } from "./components/InboxPanel";
 import { OpenEmailPanel } from "./components/OpenEmailPanel";
+import { PanelHeader } from "./components/PanelHeader";
 import { TimeBanner } from "./components/TimeBanner";
 import { TrustDashboard } from "./components/TrustDashboard";
+import { TrustOverviewStrip } from "./components/TrustOverviewStrip";
 import { fetchDraftGradingHealth, gradeReplyWithApi } from "./lib/api";
 import { getFilteredMessageIds, loadSimulationState, markMessageOpened, persistSimulationState, resetPersistedSimulationState, downloadPlaythrough, initializeSimulation, applyChoice, applyDraftedReply, buildPresetReplyText, inferReplyTypeForMessage, updateDraftReply } from "./lib/simulation";
 import { validateStory } from "./lib/storyValidation";
@@ -277,11 +279,13 @@ export default function App() {
             <>
               {state.lastTimeAdvanceNotice ? <div className="callout info">{state.lastTimeAdvanceNotice}</div> : null}
               <p className="intro-copy">
-                Open messages from the left, respond in the right pane, and watch how each move shifts stakeholder confidence.
+                Work email-by-email in the main thread, keep an eye on the cumulative trust ribbon above, and open the records dock only when you need deeper history.
               </p>
 
-              <div className="two-column-layout">
-                <aside className="left-column">
+              <TrustOverviewStrip state={state} />
+
+              <div className="workspace-layout">
+                <aside className="workspace-rail">
                   <InboxPanel
                     story={storyData}
                     state={state}
@@ -296,22 +300,9 @@ export default function App() {
                       })
                     }
                   />
-
-                  <div className="section-divider" />
-                  <TrustDashboard state={state} />
-
-                  <div className="section-divider" />
-                  <div className="stack-actions">
-                    <button className="primary-button wide-button" type="button" onClick={() => downloadPlaythrough(storyData, state)}>
-                      Export playthrough log
-                    </button>
-                    <button className="secondary-button wide-button" type="button" onClick={handleRestart}>
-                      Restart simulation
-                    </button>
-                  </div>
                 </aside>
 
-                <section className="right-column">
+                <section className="workspace-main">
                   <OpenEmailPanel
                     story={storyData}
                     state={state}
@@ -332,9 +323,35 @@ export default function App() {
                     replyEvaluationError={state.replyEvaluationError}
                     draftGradingHealth={draftGradingHealth}
                   />
-                  <AnalysisPanels state={state} logLimit={8} />
                 </section>
               </div>
+
+              <section className="records-dock">
+                <details className="records-expander">
+                  <summary>
+                    <div className="records-summary-copy">
+                      <PanelHeader title="Session Records" />
+                      <p className="panel-intro">
+                        Open the dock for logs, the detailed decision ledger, and export controls.
+                      </p>
+                    </div>
+                  </summary>
+
+                  <div className="records-dock-body">
+                    <AnalysisPanels state={state} logLimit={8} />
+
+                    <div className="section-divider" />
+                    <div className="stack-actions">
+                      <button className="primary-button wide-button" type="button" onClick={() => downloadPlaythrough(storyData, state)}>
+                        Export playthrough log
+                      </button>
+                      <button className="secondary-button wide-button" type="button" onClick={handleRestart}>
+                        Restart simulation
+                      </button>
+                    </div>
+                  </div>
+                </details>
+              </section>
             </>
           ) : null}
         </>

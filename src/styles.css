@@ -142,22 +142,92 @@ button {
   margin-top: 0.95rem;
 }
 
-.two-column-layout {
+.workspace-layout {
   display: grid;
-  grid-template-columns: minmax(320px, 0.92fr) minmax(0, 1.6fr);
-  gap: 1.35rem;
+  grid-template-columns: minmax(300px, 0.78fr) minmax(0, 1.72fr);
+  gap: 1.25rem;
   align-items: start;
+  margin-top: 1rem;
 }
 
-.left-column,
-.right-column,
+.workspace-rail,
+.workspace-main,
 .outcome-screen {
   min-width: 0;
 }
 
-.left-column {
+.workspace-rail {
   position: sticky;
   top: 1rem;
+}
+
+.workspace-main {
+  min-width: 0;
+}
+
+.trust-overview-strip {
+  background: linear-gradient(180deg, rgba(246, 249, 248, 0.95), rgba(255, 252, 247, 0.92));
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 1rem 1rem 1.15rem;
+  box-shadow: var(--shadow);
+}
+
+.trust-strip-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 0.95rem;
+}
+
+.trust-strip-intro {
+  margin-bottom: 0;
+}
+
+.trust-strip-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.trust-strip-card {
+  background: rgba(255, 252, 247, 0.88);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 0.85rem 0.9rem 0.9rem;
+}
+
+.trust-strip-topline {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  align-items: flex-start;
+  margin-bottom: 0.55rem;
+}
+
+.trust-strip-name {
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.trust-strip-score {
+  color: var(--ink-strong);
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin-bottom: 0.35rem;
+}
+
+.trust-strip-deltas {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+  margin-bottom: 0.45rem;
 }
 
 .time-panel {
@@ -276,6 +346,18 @@ button {
   box-shadow: var(--shadow);
 }
 
+.records-dock {
+  background: linear-gradient(180deg, rgba(247, 249, 248, 0.92), rgba(255, 252, 247, 0.9));
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 1rem 1rem 1.1rem;
+  box-shadow: var(--shadow);
+}
+
+.records-dock {
+  margin-top: 1.15rem;
+}
+
 .panel-intro {
   margin: 0 0 0.95rem;
   color: var(--ink-soft);
@@ -335,7 +417,7 @@ button {
 }
 
 .inbox-list {
-  margin-top: 0.95rem;
+  margin-top: 0.85rem;
 }
 
 .mail-select-button {
@@ -345,13 +427,13 @@ button {
   border: 0;
   background: transparent;
   text-align: left;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.42rem;
 }
 
 .mail-row {
   border: 1px solid rgba(184, 196, 192, 0.8);
   border-radius: 18px;
-  padding: 0.92rem 0.98rem;
+  padding: 0.58rem 0.72rem;
   background: rgba(255, 252, 247, 0.9);
   transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
@@ -378,8 +460,8 @@ button {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.25rem;
+  gap: 0.6rem;
+  margin-bottom: 0.12rem;
 }
 
 .mail-row-left {
@@ -401,7 +483,7 @@ button {
 
 .mail-sender {
   color: var(--ink-strong);
-  font-size: 0.98rem;
+  font-size: 0.9rem;
 }
 
 .mail-sender-unread,
@@ -411,26 +493,31 @@ button {
 
 .mail-time {
   color: var(--ink-soft);
-  font-size: 0.78rem;
+  font-size: 0.71rem;
   white-space: nowrap;
 }
 
 .mail-subject {
   color: var(--ink-strong);
-  margin-bottom: 0.24rem;
-  line-height: 1.4;
+  margin-bottom: 0.08rem;
+  line-height: 1.32;
+  font-size: 0.88rem;
 }
 
 .mail-preview {
   color: var(--ink-soft);
-  font-size: 0.84rem;
-  line-height: 1.5;
-  margin-bottom: 0.5rem;
+  font-size: 0.76rem;
+  line-height: 1.25;
+  margin-bottom: 0.28rem;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
 }
 
 .mail-tags {
   display: flex;
-  gap: 0.45rem;
+  gap: 0.35rem;
   flex-wrap: wrap;
   align-items: center;
 }
@@ -439,8 +526,8 @@ button {
 .trust-band {
   display: inline-block;
   border-radius: 999px;
-  padding: 0.15rem 0.55rem;
-  font-size: 0.72rem;
+  padding: 0.12rem 0.44rem;
+  font-size: 0.64rem;
   font-weight: 700;
 }
 
@@ -773,7 +860,9 @@ button {
 }
 
 .trust-expander summary,
-.reply-expander summary {
+.reply-expander summary,
+.records-expander summary,
+.records-section summary {
   cursor: pointer;
   list-style: none;
   padding: 0.95rem 1rem;
@@ -783,7 +872,9 @@ button {
 }
 
 .trust-expander summary::-webkit-details-marker,
-.reply-expander summary::-webkit-details-marker {
+.reply-expander summary::-webkit-details-marker,
+.records-expander summary::-webkit-details-marker,
+.records-section summary::-webkit-details-marker {
   display: none;
 }
 
@@ -824,6 +915,26 @@ button {
 
 .draft-error {
   margin-bottom: 0.7rem;
+}
+
+.records-expander,
+.records-section {
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: rgba(255, 252, 247, 0.88);
+}
+
+.records-dock-body,
+.records-section-body {
+  padding: 0 1rem 1rem;
+}
+
+.records-summary-copy .mail-toolbar {
+  margin-bottom: 0.15rem;
+}
+
+.records-summary-copy .panel-intro {
+  margin: 0;
 }
 
 .trust-row {
@@ -925,16 +1036,12 @@ progress::-moz-progress-bar {
   border-bottom: 0;
 }
 
-.outcome-list p {
-  margin: 0 0 0.65rem;
-}
-
 @media (max-width: 980px) {
-  .two-column-layout {
+  .workspace-layout {
     grid-template-columns: 1fr;
   }
 
-  .left-column {
+  .workspace-rail {
     position: static;
   }
 
@@ -945,6 +1052,10 @@ progress::-moz-progress-bar {
 
   .deadline-row {
     flex-direction: column;
+  }
+
+  .trust-strip-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .reply-impact-grid {
@@ -959,6 +1070,10 @@ progress::-moz-progress-bar {
 
   .reply-impact-header {
     flex-direction: column;
+  }
+
+  .trust-strip-grid {
+    grid-template-columns: 1fr;
   }
 
   .reply-impact-grid {
