@@ -20,6 +20,30 @@ function getStakeholderLabel(value: KnownStakeholder): string {
   return `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
 }
 
+function getScoreDirection(value: number) {
+  if (value > 50) {
+    return {
+      symbol: "↑",
+      className: "sticky-score-trend sticky-score-trend-up",
+      label: "above baseline",
+    };
+  }
+
+  if (value < 50) {
+    return {
+      symbol: "↓",
+      className: "sticky-score-trend sticky-score-trend-down",
+      label: "below baseline",
+    };
+  }
+
+  return {
+    symbol: "→",
+    className: "sticky-score-trend sticky-score-trend-flat",
+    label: "at baseline",
+  };
+}
+
 export function StickyMissionBar({ state, visible }: StickyMissionBarProps) {
   const timeRemaining = getTimeRemaining(state.currentMinutes);
   const progressRatio = getDeadlineProgressValue(state.currentMinutes) / getDeadlineProgressMax();
@@ -55,12 +79,22 @@ export function StickyMissionBar({ state, visible }: StickyMissionBarProps) {
           </div>
 
           <div className="sticky-score-strip" aria-label="Current cumulative trust scores">
-            {KNOWN_STAKEHOLDERS.map((stakeholder) => (
-              <div className="sticky-score-pill" key={stakeholder}>
-                <span className="sticky-score-name">{getStakeholderLabel(stakeholder)}</span>
-                <strong className="sticky-score-value">{state.trust[stakeholder]}</strong>
-              </div>
-            ))}
+            {KNOWN_STAKEHOLDERS.map((stakeholder) => {
+              const score = state.trust[stakeholder];
+              const direction = getScoreDirection(score);
+
+              return (
+                <div className="sticky-score-pill" key={stakeholder}>
+                  <span className="sticky-score-name">{getStakeholderLabel(stakeholder)}</span>
+                  <div className="sticky-score-reading">
+                    <span className={direction.className} aria-label={direction.label} title={direction.label}>
+                      {direction.symbol}
+                    </span>
+                    <strong className="sticky-score-value">{score}</strong>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           <div className="sticky-mission-side sticky-mission-side-end">
