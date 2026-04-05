@@ -472,6 +472,21 @@ button {
   box-shadow: var(--shadow);
 }
 
+.mail-message-card-sent {
+  margin-top: 0.7rem;
+  background: linear-gradient(180deg, rgba(231, 239, 241, 0.96), rgba(242, 246, 245, 0.94));
+  border-color: rgba(23, 77, 115, 0.18);
+  border-top: 4px solid rgba(23, 77, 115, 0.34);
+}
+
+.thread-cue {
+  margin-bottom: 0.45rem;
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
 .mail-message-topline {
   display: flex;
   justify-content: space-between;
@@ -503,8 +518,18 @@ button {
   color: #8a5a2b;
 }
 
+.mail-badge-completed {
+  background: #dff4e7;
+  color: #1b6e3f;
+}
+
 .mail-badge-fyi {
   background: #deeaee;
+  color: var(--accent);
+}
+
+.mail-badge-sent {
+  background: rgba(23, 77, 115, 0.14);
   color: var(--accent);
 }
 

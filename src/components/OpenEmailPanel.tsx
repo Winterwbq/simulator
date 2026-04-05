@@ -1,6 +1,13 @@
 import { buildConsequenceHint, extractAttachments, extractDecisionSummary } from "../lib/simulation";
 import { PanelHeader } from "./PanelHeader";
-import type { DraftGradingHealth, Message, ReplyType, SimulationState, Story } from "../lib/types";
+import type {
+  DraftGradingHealth,
+  Message,
+  ReplyEvaluationEntry,
+  ReplyType,
+  SimulationState,
+  Story,
+} from "../lib/types";
 
 interface OpenEmailPanelProps {
   story: Story;
@@ -43,7 +50,7 @@ function renderChoiceActions(
       <>
         <div className="decision-summary">{extractDecisionSummary(message)}</div>
         {state.handledIds.includes(message.id) ? (
-          <div className="callout success">This email has already been handled.</div>
+          <div className="callout success">Reply sent. This thread has already been handled.</div>
         ) : (
           <>
             <h3 className="section-title">Next Action</h3>
@@ -127,6 +134,17 @@ function renderChoiceActions(
   return <div className="callout info">This is an FYI message. Reading it does not change the simulation.</div>;
 }
 
+function getReplyEntryForMessage(state: SimulationState, messageId: string): ReplyEvaluationEntry | null {
+  for (let index = state.decisionLog.length - 1; index >= 0; index -= 1) {
+    const entry = state.decisionLog[index];
+    if (entry.message_id === messageId) {
+      return entry;
+    }
+  }
+
+  return null;
+}
+
 export function OpenEmailPanel({
   story,
   state,
@@ -150,12 +168,19 @@ export function OpenEmailPanel({
 
   const message = story.messages[messageId];
   const attachments = extractAttachments(message);
-  const badgeText = message.choices.length > 0 ? "Action Required" : "FYI";
-  const badgeClass = message.choices.length > 0 ? "mail-badge-action" : "mail-badge-fyi";
+  const replyEntry = getReplyEntryForMessage(state, messageId);
+  const isHandled = state.handledIds.includes(message.id);
+  const badgeText = message.choices.length === 0 ? "FYI" : isHandled ? "Completed" : "Action Required";
+  const badgeClass =
+    message.choices.length === 0
+      ? "mail-badge-fyi"
+      : isHandled
+        ? "mail-badge-completed"
+        : "mail-badge-action";
 
   return (
     <section>
-      <PanelHeader title="Open Email" />
+      <PanelHeader title="Conversation" />
       <div className="mail-message-card">
         <div className="mail-message-topline">
           <div className="mail-message-subject">{message.subject}</div>
@@ -184,6 +209,24 @@ export function OpenEmailPanel({
         <pre className="mail-message-body">{message.body}</pre>
       </div>
 
+      {replyEntry ? (
+        <>
+          <div className="mail-message-card mail-message-card-sent">
+            <div className="thread-cue">↳ Outgoing reply</div>
+            <div className="mail-message-topline">
+              <div className="mail-message-subject">{`Re: ${message.subject}`}</div>
+              <div className="mail-message-badge mail-badge-sent">Reply sent</div>
+            </div>
+
+            <div className="mail-meta-row">From: You (Chief of Staff)</div>
+            <div className="mail-meta-row">{`To: ${message.from}`}</div>
+            <div className="mail-meta-row">{`Reply type: ${replyEntry.reply_type}`}</div>
+
+            <pre className="mail-message-body">{replyEntry.reply_text}</pre>
+          </div>
+        </>
+      ) : null}
+
       <div className="section-divider" />
       {renderChoiceActions(
         message,
@@ -196,26 +239,6 @@ export function OpenEmailPanel({
         replyEvaluationError,
         draftGradingHealth,
       )}
-
-      {state.lastReplyPreview ? (
-        <>
-          <div className="section-divider" />
-          <details className="reply-expander">
-            <summary>Draft reply</summary>
-            <div className="reply-editor-wrap">
-              <label className="field-label" htmlFor="draft-reply">
-                Edit your reply
-              </label>
-              <textarea
-                id="draft-reply"
-                className="reply-editor"
-                value={state.lastReplyPreview}
-                onChange={(event) => onDraftReplyChange(message.id, event.target.value)}
-              />
-            </div>
-          </details>
-        </>
-      ) : null}
     </section>
   );
 }

@@ -130,7 +130,6 @@ export interface SimulationState {
   currentMinutes: number;
   deadlineLabel: string;
   lastTimeAdvanceNotice: string;
-  lastReplyPreview: string;
   ending: Ending | null;
   simulationComplete: boolean;
   showStartPrompt: boolean;

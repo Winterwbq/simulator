@@ -94,7 +94,6 @@ export function initializeSimulation(story: Story): SimulationState {
     currentMinutes: DEFAULT_TIME_MINUTES,
     deadlineLabel: DEADLINE_LABEL,
     lastTimeAdvanceNotice: "",
-    lastReplyPreview: "",
     ending: null,
     simulationComplete: false,
     showStartPrompt: true,
@@ -459,21 +458,13 @@ export function buildConsequenceHint(): string {
   return "Graded by the same local model after you choose it.";
 }
 
-export function generateDraftReplyPreview(message: Message, choice: Choice): string {
-  const actionLine = choice.log.trim() || choice.label;
-  return [
-    `To: ${message.from}`,
-    `Subject: Re: ${message.subject}`,
-    "",
-    "Thanks for flagging this so quickly.",
-    `We are proceeding with the following response: ${actionLine}.`,
-    "I will keep you updated as stakeholder outreach and review steps move forward.",
-  ].join("\n");
-}
-
 export function buildPresetReplyText(message: Message, choice: Choice): string {
   const actionLine = choice.log.trim() || choice.label;
-  return `In response to "${message.subject}", we will ${actionLine}.`;
+  return [
+    "Thank you for raising this.",
+    `In response to "${message.subject}", we will ${actionLine}.`,
+    "We will continue sharing updates as the next review steps move forward.",
+  ].join("\n\n");
 }
 
 export function inferReplyTypeForMessage(message: Message): ReplyType {
@@ -767,20 +758,16 @@ function applyEvaluatedReply(
     trustHistory,
     logEntries,
     currentMinutes,
-    lastReplyPreview: input.replyText,
     lastTimeAdvanceNotice: `Time advanced to ${formatDayTime(currentMinutes)}.`,
     ending,
     simulationComplete: ending ? false : allActionableMessagesHandled(story, availableIds, handledIds),
-    selectedMessageId: null,
+    selectedMessageId: input.messageId,
     lastEvaluation: evaluationEntry,
     replyEvaluationError: null,
     replyEvaluationPending: false,
   };
 
-  return {
-    ...nextBaseState,
-    selectedMessageId: pickNextMessage(nextBaseState),
-  };
+  return nextBaseState;
 }
 
 function formatSignedNumber(value: number): string {

@@ -48,10 +48,10 @@ export default function App() {
   }, [state.selectedMessageId, state.openedIds, state.showStartPrompt]);
 
   useEffect(() => {
-    if (filteredIds.length === 0) {
+    if (state.selectedMessageId) {
       return;
     }
-    if (state.selectedMessageId && filteredIds.includes(state.selectedMessageId)) {
+    if (filteredIds.length === 0) {
       return;
     }
     setState((current) => ({ ...current, selectedMessageId: filteredIds[0] }));
