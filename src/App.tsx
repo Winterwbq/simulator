@@ -224,16 +224,16 @@ export default function App() {
     setState(initializeSimulation(nextStory));
   };
 
-  const handleGradingModeChange = (nextMode: GradingMode) => {
-    const resolvedMode = coerceGradingMode(nextMode);
-    if (resolvedMode === gradingMode) {
-      return;
-    }
+  // const handleGradingModeChange = (nextMode: GradingMode) => {
+  //   const resolvedMode = coerceGradingMode(nextMode);
+  //   if (resolvedMode === gradingMode) {
+  //     return;
+  //   }
 
-    resetPersistedSimulationState();
-    setGradingMode(resolvedMode);
-    setState(initializeSimulation(activeStory));
-  };
+  //   resetPersistedSimulationState();
+  //   setGradingMode(resolvedMode);
+  //   setState(initializeSimulation(activeStory));
+  // };
 
   const handleChoose = async (messageId: string, choiceIndex: number) => {
     const message = activeStory.messages[messageId];
