@@ -7,6 +7,7 @@ import {
 import { PanelHeader } from "./PanelHeader";
 import type {
   DraftGradingHealth,
+  GradingMode,
   Message,
   KnownStakeholder,
   ReplyEvaluationEntry,
@@ -20,6 +21,7 @@ interface OpenEmailPanelProps {
   story: Story;
   state: SimulationState;
   messageId: string | null;
+  gradingMode: GradingMode;
   onChoose: (messageId: string, choiceIndex: number) => void;
   onDraftReplyChange: (messageId: string, value: string) => void;
   onDraftReplyTypeChange: (messageId: string, value: ReplyType) => void;
@@ -46,6 +48,7 @@ function renderChoiceActions(
   replyEvaluationPending: OpenEmailPanelProps["replyEvaluationPending"],
   replyEvaluationError: OpenEmailPanelProps["replyEvaluationError"],
   draftGradingHealth: OpenEmailPanelProps["draftGradingHealth"],
+  gradingMode: OpenEmailPanelProps["gradingMode"],
 ) {
   if (message.choices.length > 0) {
     const composer = state.draftReplies[message.id] ?? {
@@ -70,68 +73,73 @@ function renderChoiceActions(
                   className="primary-button wide-button"
                   type="button"
                   onClick={() => onChoose(message.id, index)}
-                  disabled={replyEvaluationPending || draftGradingHealth.status !== "ready"}
+                  disabled={
+                    replyEvaluationPending ||
+                    (gradingMode === "ai" && draftGradingHealth.status !== "ready")
+                  }
                 >
                   {choice.label}
                 </button>
-                <div className="choice-hint">{buildConsequenceHint()}</div>
+                <div className="choice-hint">{buildConsequenceHint(gradingMode)}</div>
               </div>
             ))}
 
-            <details className="reply-expander draft-expander">
-              <summary>Draft your own reply (optional)</summary>
-              <div className="reply-editor-wrap">
-                <div className="small-caption">{draftGradingHealth.statusMessage}</div>
-                {draftGradingHealth.status !== "ready" ? (
-                  <div className={`callout ${draftGradingHealth.status === "error" || draftGradingHealth.status === "model_missing" || draftGradingHealth.status === "binary_missing" ? "error" : "info"}`}>
-                    {draftGradingHealth.status === "checking"
-                      ? "Checking the local reply grader."
-                      : draftGradingHealth.statusMessage}
-                  </div>
-                ) : null}
-                <label className="field-label" htmlFor={`draft-reply-text-${message.id}`}>
-                  Your reply
-                </label>
-                <textarea
-                  id={`draft-reply-text-${message.id}`}
-                  className="reply-editor"
-                  value={composer.text}
-                  onChange={(event) => onDraftReplyChange(message.id, event.target.value)}
-                  placeholder="Write the reply you want to send..."
-                />
+            {gradingMode === "ai" ? (
+              <details className="reply-expander draft-expander">
+                <summary>Draft your own reply (optional)</summary>
+                <div className="reply-editor-wrap">
+                  <div className="small-caption">{draftGradingHealth.statusMessage}</div>
+                  {draftGradingHealth.status !== "ready" ? (
+                    <div className={`callout ${draftGradingHealth.status === "error" || draftGradingHealth.status === "model_missing" || draftGradingHealth.status === "binary_missing" ? "error" : "info"}`}>
+                      {draftGradingHealth.status === "checking"
+                        ? "Checking the local reply grader."
+                        : draftGradingHealth.statusMessage}
+                    </div>
+                  ) : null}
+                  <label className="field-label" htmlFor={`draft-reply-text-${message.id}`}>
+                    Your reply
+                  </label>
+                  <textarea
+                    id={`draft-reply-text-${message.id}`}
+                    className="reply-editor"
+                    value={composer.text}
+                    onChange={(event) => onDraftReplyChange(message.id, event.target.value)}
+                    placeholder="Write the reply you want to send..."
+                  />
 
-                <label className="field-label" htmlFor={`draft-reply-type-${message.id}`}>
-                  Reply type
-                </label>
-                <select
-                  id={`draft-reply-type-${message.id}`}
-                  className="select-input"
-                  value={composer.replyType}
-                  onChange={(event) => onDraftReplyTypeChange(message.id, event.target.value as ReplyType)}
-                >
-                  {REPLY_TYPE_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-
-                <div className="draft-send-row">
-                  <button
-                    className="secondary-button"
-                    type="button"
-                    onClick={() => onSendDraftedReply(message.id)}
-                    disabled={
-                      composer.text.trim().length === 0 ||
-                      replyEvaluationPending ||
-                      draftGradingHealth.status !== "ready"
-                    }
+                  <label className="field-label" htmlFor={`draft-reply-type-${message.id}`}>
+                    Reply type
+                  </label>
+                  <select
+                    id={`draft-reply-type-${message.id}`}
+                    className="select-input"
+                    value={composer.replyType}
+                    onChange={(event) => onDraftReplyTypeChange(message.id, event.target.value as ReplyType)}
                   >
-                    {replyEvaluationPending ? "Grading reply..." : "Send drafted reply"}
-                  </button>
+                    {REPLY_TYPE_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+
+                  <div className="draft-send-row">
+                    <button
+                      className="secondary-button"
+                      type="button"
+                      onClick={() => onSendDraftedReply(message.id)}
+                      disabled={
+                        composer.text.trim().length === 0 ||
+                        replyEvaluationPending ||
+                        draftGradingHealth.status !== "ready"
+                      }
+                    >
+                      {replyEvaluationPending ? "Grading reply..." : "Send drafted reply"}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </details>
+              </details>
+            ) : null}
           </>
         )}
       </>
@@ -160,6 +168,7 @@ export function OpenEmailPanel({
   story,
   state,
   messageId,
+  gradingMode,
   onChoose,
   onDraftReplyChange,
   onDraftReplyTypeChange,
@@ -298,6 +307,7 @@ export function OpenEmailPanel({
         replyEvaluationPending,
         replyEvaluationError,
         draftGradingHealth,
+        gradingMode,
       )}
     </section>
   );

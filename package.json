@@ -4,7 +4,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently --names llama,server,client --prefix-colors blue,green,magenta --kill-signal SIGINT --kill-timeout 5000 --kill-others-on-fail \"npm:dev:llama\" \"npm:dev:server\" \"npm:dev:client\"",
+    "dev": "tsx scripts/dev-stack.ts",
+    "dev:with-ai": "concurrently --names llama,server,client --prefix-colors blue,green,magenta --kill-signal SIGINT --kill-timeout 5000 --kill-others-on-fail \"npm:dev:llama\" \"npm:dev:server\" \"npm:dev:client\"",
     "dev:client": "vite",
     "dev:llama": "tsx scripts/dev-llama.ts",
     "dev:server": "tsx server/index.ts",

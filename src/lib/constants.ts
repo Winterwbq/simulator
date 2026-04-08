@@ -9,6 +9,7 @@ export const DEADLINE_CONSEQUENCE =
   "If you delay too long, the media narrative forms without you.";
 export const ENDING_PATTERN = /^(>=|<=|>|<)\s*(\d{1,3})$/;
 export const STORAGE_KEY = "inbox-simulator-state-v5";
+export const GRADING_MODE_STORAGE_KEY = "inbox-simulator-grading-mode-v1";
 
 export const DECISION_SUMMARIES: Record<string, string> = {
   m1: "Decision: Do we disclose the uncertainty publicly and invite outside review?",

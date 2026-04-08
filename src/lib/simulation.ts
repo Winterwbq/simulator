@@ -7,6 +7,7 @@ import {
   DECISION_TIME_INCREMENT,
   DEFAULT_TIME_MINUTES,
   ENDING_PATTERN,
+  GRADING_MODE_STORAGE_KEY,
   STORAGE_KEY,
 } from "./constants";
 import { KNOWN_STAKEHOLDERS } from "./types";
@@ -15,6 +16,7 @@ import type {
   DraftComposerState,
   DraftGradeResult,
   Ending,
+  GradingMode,
   KnownStakeholder,
   Message,
   QuickFilter,
@@ -165,6 +167,36 @@ function buildFallbackExplanation(stakeholder: KnownStakeholder, delta: number):
   return `This reply had little direct effect on ${label.toLowerCase()} trust.`;
 }
 
+function normalizePredefinedDelta(value: number | undefined): number {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return 0;
+  }
+
+  const snapped = Math.round(value / 5) * 5;
+  return Math.max(-10, Math.min(10, snapped));
+}
+
+function buildPredefinedExplanation(
+  stakeholder: KnownStakeholder,
+  delta: number,
+  message: Message,
+  choice: Choice,
+): string {
+  const label = `${stakeholder.charAt(0).toUpperCase()}${stakeholder.slice(1)}`;
+  const action = choice.log.trim() || choice.label.trim();
+  const subject = message.subject.trim();
+
+  if (delta > 0) {
+    return `This preset reply is authored to strengthen ${label.toLowerCase()} trust by choosing to ${action} in response to "${subject}".`;
+  }
+
+  if (delta < 0) {
+    return `This preset reply is authored to weaken ${label.toLowerCase()} trust because choosing to ${action} is expected to land poorly with that audience in "${subject}".`;
+  }
+
+  return `This preset reply is authored to have little direct effect on ${label.toLowerCase()} trust for "${subject}".`;
+}
+
 function normalizeStakeholderExplanations(
   value: unknown,
   deltas: StakeholderDeltas,
@@ -278,6 +310,28 @@ export function persistSimulationState(state: SimulationState): void {
   window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
+export function buildPredefinedGradeResult(message: Message, choice: Choice): DraftGradeResult {
+  const trust_deltas = KNOWN_STAKEHOLDERS.reduce((accumulator, stakeholder) => {
+    accumulator[stakeholder] = normalizePredefinedDelta(choice.effects[stakeholder]);
+    return accumulator;
+  }, {} as StakeholderDeltas);
+
+  const trust_explanations = KNOWN_STAKEHOLDERS.reduce((accumulator, stakeholder) => {
+    accumulator[stakeholder] = buildPredefinedExplanation(
+      stakeholder,
+      trust_deltas[stakeholder],
+      message,
+      choice,
+    );
+    return accumulator;
+  }, {} as StakeholderExplanations);
+
+  return {
+    trust_deltas,
+    trust_explanations,
+  };
+}
+
 export function loadPersistedScenarioId(): string | null {
   if (typeof window === "undefined") {
     return null;
@@ -294,6 +348,23 @@ export function loadPersistedScenarioId(): string | null {
   } catch {
     return null;
   }
+}
+
+export function loadPersistedGradingMode(): GradingMode | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const raw = window.localStorage.getItem(GRADING_MODE_STORAGE_KEY);
+  return raw === "ai" || raw === "predefined" ? raw : null;
+}
+
+export function persistGradingMode(mode: GradingMode): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(GRADING_MODE_STORAGE_KEY, mode);
 }
 
 export function resetPersistedSimulationState(): void {
@@ -519,7 +590,11 @@ export function formatDeltaText(value: number): string {
   return "0";
 }
 
-export function buildConsequenceHint(): string {
+export function buildConsequenceHint(gradingMode: GradingMode): string {
+  if (gradingMode === "predefined") {
+    return "Uses predefined scenario scores without live AI grading.";
+  }
+
   return "Graded by the same local model after you choose it.";
 }
 

@@ -30,13 +30,23 @@ Create a local `.env` first if you want to override the default ports or model p
 cp .env.example .env
 ```
 
-`npm run dev` and `npm start` both:
+Frontend grading mode can also be configured in `.env`:
 
-- ensure `llama.cpp` is available under `simulator/llama.cpp`
-- ensure a local Python venv exists for `cmake` if your machine does not already have `cmake`
-- download the default Qwen GGUF model into `simulator/models/`
-- build `llama-server`
-- start `llama-server`, the local grading API, and the Vite frontend together
+```bash
+VITE_DEFAULT_GRADING_MODE=predefined
+VITE_ALLOW_AI_MODE=false
+```
+
+Recommended values:
+
+- default / static-safe setup: `VITE_DEFAULT_GRADING_MODE=predefined` and `VITE_ALLOW_AI_MODE=false`
+- local machine with llama server: `VITE_DEFAULT_GRADING_MODE=ai` and `VITE_ALLOW_AI_MODE=true`
+- GitHub Pages/static deploy: `VITE_DEFAULT_GRADING_MODE=predefined` and `VITE_ALLOW_AI_MODE=false`
+
+`npm run dev` and `npm start` now depend on `VITE_ALLOW_AI_MODE`:
+
+- when `VITE_ALLOW_AI_MODE=false`: start only the Vite frontend (no local grading API and no `llama-server`)
+- when `VITE_ALLOW_AI_MODE=true`: bootstrap `llama.cpp`, ensure/download the local model as needed, build `llama-server`, then start `llama-server`, the local grading API, and the Vite frontend together
 
 On the first run, the model download is large and the local server build can take a while.
 
@@ -46,7 +56,8 @@ On the first run, the model download is large and the local server build can tak
 - The default local grading model is `Qwen3.5-4B-Q4_0.gguf`.
 - The local grader now returns stakeholder trust deltas directly for `regulator`, `investor`, `community`, `engineering`, and `media`.
 - Trust changes from evaluated replies are quantized to fixed 5-point steps: `-10`, `-5`, `0`, `+5`, or `+10`.
-- Both preset replies and drafted replies use the same local grading path.
+- In `AI` mode, both preset replies and drafted replies use the local grading path.
+- In `Predefined` mode, preset replies use authored local scores and authored explanations, and drafted replies are hidden.
 
 ## Verify
 

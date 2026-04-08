@@ -10,9 +10,26 @@ import { TimeBanner } from "./components/TimeBanner";
 import { TrustDashboard } from "./components/TrustDashboard";
 import { TrustOverviewStrip } from "./components/TrustOverviewStrip";
 import { fetchDraftGradingHealth, gradeReplyWithApi } from "./lib/api";
-import { getFilteredMessageIds, loadPersistedScenarioId, loadSimulationState, markMessageOpened, persistSimulationState, resetPersistedSimulationState, downloadPlaythrough, initializeSimulation, applyChoice, applyDraftedReply, buildPresetReplyText, inferReplyTypeForMessage, updateDraftReply } from "./lib/simulation";
+import {
+  applyChoice,
+  applyDraftedReply,
+  buildPredefinedGradeResult,
+  buildPresetReplyText,
+  downloadPlaythrough,
+  getFilteredMessageIds,
+  inferReplyTypeForMessage,
+  initializeSimulation,
+  loadPersistedGradingMode,
+  loadPersistedScenarioId,
+  loadSimulationState,
+  markMessageOpened,
+  persistGradingMode,
+  persistSimulationState,
+  resetPersistedSimulationState,
+  updateDraftReply,
+} from "./lib/simulation";
 import { validateStory } from "./lib/storyValidation";
-import type { DraftGradingHealth, SimulationState, Story } from "./lib/types";
+import type { DraftGradingHealth, GradingMode, SimulationState, Story } from "./lib/types";
 
 const DEFAULT_DRAFT_GRADING_HEALTH: DraftGradingHealth = {
   gradingBackend: "llama.cpp",
@@ -25,10 +42,29 @@ const DEFAULT_DRAFT_GRADING_HEALTH: DraftGradingHealth = {
   statusMessage: "Checking the local llama.cpp reply grader...",
 };
 
+const ALLOW_AI_MODE = import.meta.env.VITE_ALLOW_AI_MODE === "true";
+const DEFAULT_GRADING_MODE: GradingMode =
+  import.meta.env.VITE_DEFAULT_GRADING_MODE === "ai" && ALLOW_AI_MODE ? "ai" : "predefined";
+
+function coerceGradingMode(value: string | null): GradingMode {
+  if (!ALLOW_AI_MODE) {
+    return "predefined";
+  }
+
+  if (value === "ai" || value === "predefined") {
+    return value;
+  }
+
+  return DEFAULT_GRADING_MODE;
+}
+
 export default function App() {
   const initialStory = useMemo<Story>(() => {
     return getScenarioById(loadPersistedScenarioId()) ?? getRandomScenario();
   }, []);
+  const [gradingMode, setGradingMode] = useState<GradingMode>(() =>
+    coerceGradingMode(loadPersistedGradingMode()),
+  );
   const [activeStory, setActiveStory] = useState<Story>(initialStory);
   const validationErrors = useMemo(() => validateStory(activeStory), [activeStory]);
   const [state, setState] = useState<SimulationState>(() => loadSimulationState(initialStory));
@@ -46,6 +82,16 @@ export default function App() {
       persistSimulationState(state);
     }
   }, [state, validationErrors]);
+
+  useEffect(() => {
+    const nextMode = coerceGradingMode(gradingMode);
+    if (nextMode !== gradingMode) {
+      setGradingMode(nextMode);
+      return;
+    }
+
+    persistGradingMode(gradingMode);
+  }, [gradingMode]);
 
   useEffect(() => {
     if (state.showStartPrompt) {
@@ -76,6 +122,14 @@ export default function App() {
   }, [activeStory, state.availableIds, state.stakeholderFilter]);
 
   useEffect(() => {
+    if (gradingMode !== "ai" || !ALLOW_AI_MODE) {
+      setDraftGradingHealth({
+        ...DEFAULT_DRAFT_GRADING_HEALTH,
+        statusMessage: "AI grading is turned off while predefined mode is active.",
+      });
+      return;
+    }
+
     let cancelled = false;
     let timeoutId: number | undefined;
 
@@ -115,7 +169,7 @@ export default function App() {
         window.clearTimeout(timeoutId);
       }
     };
-  }, []);
+  }, [gradingMode]);
 
   useEffect(() => {
     if (state.showStartPrompt || inOutcomeMode) {
@@ -170,10 +224,27 @@ export default function App() {
     setState(initializeSimulation(nextStory));
   };
 
+  const handleGradingModeChange = (nextMode: GradingMode) => {
+    const resolvedMode = coerceGradingMode(nextMode);
+    if (resolvedMode === gradingMode) {
+      return;
+    }
+
+    resetPersistedSimulationState();
+    setGradingMode(resolvedMode);
+    setState(initializeSimulation(activeStory));
+  };
+
   const handleChoose = async (messageId: string, choiceIndex: number) => {
     const message = activeStory.messages[messageId];
     const choice = message?.choices[choiceIndex];
     if (!message || !choice) {
+      return;
+    }
+
+    if (gradingMode === "predefined") {
+      const graded = buildPredefinedGradeResult(message, choice);
+      setState((current) => applyChoice(activeStory, current, messageId, choiceIndex, graded));
       return;
     }
 
@@ -214,6 +285,10 @@ export default function App() {
   };
 
   const handleSendDraftedReply = async (messageId: string) => {
+    if (gradingMode !== "ai") {
+      return;
+    }
+
     const draft = state.draftReplies[messageId];
     const message = activeStory.messages[messageId];
     if (!draft || !message || draft.text.trim().length === 0) {
@@ -276,6 +351,46 @@ export default function App() {
             Weigh disclosure, credibility, and public trust under deadline pressure.
           </p>
         ) : null}
+
+        <div className="grading-mode-strip">
+          <div className="grading-mode-copy">
+            <div className="grading-mode-label">Grading mode</div>
+            <div className="grading-mode-note">
+              Switching modes resets the current run. Predefined mode is deployable without the local AI server.
+            </div>
+          </div>
+
+          <div className="grading-mode-toggle" role="group" aria-label="Select grading mode">
+            <button
+              className={
+                gradingMode === "predefined"
+                  ? "grading-mode-button grading-mode-button-active"
+                  : "grading-mode-button"
+              }
+              type="button"
+              onClick={() => handleGradingModeChange("predefined")}
+            >
+              Predefined
+            </button>
+            <button
+              className={
+                gradingMode === "ai"
+                  ? "grading-mode-button grading-mode-button-active"
+                  : "grading-mode-button"
+              }
+              type="button"
+              onClick={() => handleGradingModeChange("ai")}
+              disabled={!ALLOW_AI_MODE}
+              title={
+                ALLOW_AI_MODE
+                  ? "Use the local AI grader and drafted replies."
+                  : "AI mode is disabled in this deployment."
+              }
+            >
+              AI
+            </button>
+          </div>
+        </div>
       </div>
 
       {inOutcomeMode ? (
@@ -350,6 +465,7 @@ export default function App() {
                     story={activeStory}
                     state={state}
                     messageId={state.selectedMessageId}
+                    gradingMode={gradingMode}
                     onChoose={handleChoose}
                     onDraftReplyChange={(messageId, value) =>
                       setState((current) =>

@@ -1,1 +1,1 @@
-{"root":["./server/index.ts","./scripts/dev-llama.ts"],"version":"5.9.3"}
+{"root":["./server/index.ts","./scripts/dev-llama.ts","./scripts/dev-stack.ts"],"version":"5.9.3"}

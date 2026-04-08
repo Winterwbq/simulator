@@ -86,6 +86,73 @@ button {
   font-size: 1rem;
 }
 
+.grading-mode-strip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin: -0.35rem 0 1.2rem;
+  padding: 0.72rem 0.9rem;
+  border: 1px solid rgba(184, 196, 192, 0.72);
+  border-radius: 18px;
+  background: rgba(255, 252, 247, 0.72);
+  backdrop-filter: blur(8px);
+}
+
+.grading-mode-copy {
+  min-width: 0;
+}
+
+.grading-mode-label {
+  color: var(--accent-strong);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 0.1rem;
+}
+
+.grading-mode-note {
+  color: var(--ink-soft);
+  font-size: 0.88rem;
+}
+
+.grading-mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.22rem;
+  border-radius: 999px;
+  background: rgba(240, 244, 242, 0.94);
+  border: 1px solid rgba(184, 196, 192, 0.72);
+}
+
+.grading-mode-button {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.56rem 0.96rem;
+  background: transparent;
+  color: var(--ink);
+  font-weight: 700;
+  box-shadow: none;
+}
+
+.grading-mode-button:hover {
+  transform: none;
+  background: rgba(255, 252, 247, 0.92);
+}
+
+.grading-mode-button-active {
+  background: var(--accent);
+  color: #f8fbfb;
+  box-shadow: 0 10px 22px rgba(23, 77, 115, 0.18);
+}
+
+.grading-mode-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .intro-copy {
   margin: 0 0 1.15rem;
   color: var(--ink);
@@ -1333,6 +1400,11 @@ progress::-moz-progress-bar {
     position: static;
   }
 
+  .grading-mode-strip {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .time-banner {
     flex-direction: column;
     align-items: flex-start;
@@ -1404,8 +1476,17 @@ progress::-moz-progress-bar {
     align-items: flex-start;
   }
 
-.action-row {
-  flex-direction: column;
+  .grading-mode-toggle {
+    width: 100%;
+  }
+
+  .grading-mode-button {
+    flex: 1;
+    text-align: center;
+  }
+
+  .action-row {
+    flex-direction: column;
   }
 }
 

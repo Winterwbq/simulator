@@ -9,6 +9,7 @@ export const KNOWN_STAKEHOLDERS = [
 export type KnownStakeholder = (typeof KNOWN_STAKEHOLDERS)[number];
 export type TrustScores = Record<KnownStakeholder, number>;
 export type QuickFilter = "All" | "Unread" | "Resolved";
+export type GradingMode = "predefined" | "ai";
 export type EndingOperator = ">=" | "<=" | ">" | "<";
 export type ReplyType =
   | "Public statement"
