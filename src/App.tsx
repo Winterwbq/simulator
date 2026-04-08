@@ -352,7 +352,7 @@ export default function App() {
           </p>
         ) : null}
 
-        <div className="grading-mode-strip">
+        {/* <div className="grading-mode-strip">
           <div className="grading-mode-copy">
             <div className="grading-mode-label">Grading mode</div>
             <div className="grading-mode-note">
@@ -390,7 +390,7 @@ export default function App() {
               AI
             </button>
           </div>
-        </div>
+        </div> */}
       </div>
 
       {inOutcomeMode ? (
