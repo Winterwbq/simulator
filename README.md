@@ -33,6 +33,7 @@ cp .env.example .env
 Frontend grading mode can also be configured in `.env`:
 
 ```bash
+VITE_BASE_PATH=/simulator/
 VITE_DEFAULT_GRADING_MODE=predefined
 VITE_ALLOW_AI_MODE=false
 ```
@@ -42,6 +43,7 @@ Recommended values:
 - default / static-safe setup: `VITE_DEFAULT_GRADING_MODE=predefined` and `VITE_ALLOW_AI_MODE=false`
 - local machine with llama server: `VITE_DEFAULT_GRADING_MODE=ai` and `VITE_ALLOW_AI_MODE=true`
 - GitHub Pages/static deploy: `VITE_DEFAULT_GRADING_MODE=predefined` and `VITE_ALLOW_AI_MODE=false`
+- for project pages, set `VITE_BASE_PATH` to your repo path (for this repo: `/simulator/`)
 
 `npm run dev` and `npm start` now depend on `VITE_ALLOW_AI_MODE`:
 
